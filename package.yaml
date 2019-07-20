@@ -8,6 +8,7 @@ maintainer:          gergo@erdi.hu
 copyright:           2019 Gergő Érdi
 category:            Hardware
 extra-source-files:
+  - LICENSE
   - README.md
 
 dependencies:
