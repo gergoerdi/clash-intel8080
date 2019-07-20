@@ -9,7 +9,6 @@ import Hardware.Intel8080.ISA
 import Hardware.Intel8080.ALU
 import Hardware.Intel8080.Decode
 import Hardware.Intel8080.Microcode
-import Hardware.Emulator.Memory
 
 import Prelude ()
 import Clash.Prelude hiding (lift)
@@ -48,14 +47,11 @@ mkS = MkS{..}
     write = Nothing
 
 data R = MkR
-    { mem :: Mem IO Addr Value
-    , readPortIO :: Port -> IO Value
-    , writePortIO :: Port -> Value -> IO ()
+    { readMem :: Addr -> IO Value
+    , writeMem :: Addr -> Value -> IO ()
+    , inPort :: Port -> IO Value
+    , outPort :: Port -> Value -> IO ()
     }
-
-mkR :: Mem IO Addr Value -> (Port -> IO Value) -> (Port -> Value -> IO ()) -> IO R
-mkR mem readPortIO writePortIO = do
-    return MkR{..}
 
 type CPU = MaybeT (RWST R () S IO)
 
@@ -76,9 +72,8 @@ dumpState = do
 
 peekByte :: Addr -> CPU Value
 peekByte addr = do
-    mem <- asks mem
-    x <- liftIO $ peekAt mem addr
-    return x
+    readMem <- asks readMem
+    liftIO $ readMem addr
 
 readByte :: CPU Value
 readByte = do
@@ -106,8 +101,8 @@ instance (KnownNat n) => PrintfArg (Unsigned n) where
 
 pokeByte :: Addr -> Value -> CPU ()
 pokeByte addr x = do
-    mem <- asks mem
-    liftIO $ pokeTo mem addr x
+    writeMem <- asks writeMem
+    liftIO $ writeMem addr x
 
 setPC :: Addr -> CPU ()
 setPC pc' = modify $ \s -> s{ pc = pc' }
@@ -128,12 +123,12 @@ popByte = do
 
 writePort :: Port -> Value -> CPU ()
 writePort port value = do
-    write <- asks writePortIO
+    write <- asks outPort
     liftIO $ write port value
 
 readPort :: Port -> CPU Value
 readPort port = do
-    read <- asks readPortIO
+    read <- asks inPort
     liftIO $ read port
 
 disableInterrupts :: CPU ()

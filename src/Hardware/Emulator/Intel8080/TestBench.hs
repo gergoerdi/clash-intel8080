@@ -36,7 +36,7 @@ runTest romFile = do
 
     let stepTB act = do
             s <- get
-            r <- liftIO $ mkR mem (inPort s) (outPort s)
+            let r = MkR (peekAt mem) (pokeTo mem) (inPort s) (outPort s)
             (s, _) <- liftIO $ execRWST (runMaybeT act) r s
             put s
 
