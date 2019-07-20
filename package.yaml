@@ -1,8 +1,7 @@
 name:                intel8080
-version:             0.1.0.0
-#synopsis:
-#description:
-#homepage:            https://github.com/gergoerdi/
+version:             0.0.0.0
+synopsis:            Intel 8080 CPU core: software emulator and CLaSH hardware description 
+homepage:            https://github.com/gergoerdi/clash-intel8080
 license:             MIT
 author:              Gergő Érdi
 maintainer:          gergo@erdi.hu
@@ -14,6 +13,7 @@ extra-source-files:
 dependencies:
   - base >= 4.7 && < 5
   - clash-prelude
+  - clash-retrocomputer-utils
   - bytestring
   - mtl
   - transformers
@@ -29,11 +29,12 @@ dependencies:
   - ghc-typelits-natnormalise
   - ghc-typelits-extra
 
+source-dirs:
+  - src
+
 executables:
   test-bench-sim:
-    source-dirs:      clash-utils/src-clash src
     main:             Hardware/Clash/Intel8080/TestBench.hs
 
   test-bench-emu:
-    source-dirs:      clash-utils/src-clash src
     main:             Hardware/Emulator/Intel8080/TestBench.hs

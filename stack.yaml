@@ -7,9 +7,11 @@ extra-deps:
     - clash-prelude
     - clash-lib
     - clash-ghc
-    - clash-cosim
 
   - git: https://github.com/clash-lang/ghc-typelits-extra
     commit: 145a1a524d9ee163887e7da2edc11cd2ff977ab8
 
   - higgledy-0.3.0.0
+
+packages:
+  - clash-utils
