@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, DataKinds, BinaryLiterals #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Main where
 
 import Hardware.Intel8080

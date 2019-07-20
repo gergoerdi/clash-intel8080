@@ -1,5 +1,4 @@
-{-# LANGUAGE RecordWildCards, DataKinds, BinaryLiterals #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards, TemplateHaskell #-}
 module Main where
 
 import Hardware.Intel8080
