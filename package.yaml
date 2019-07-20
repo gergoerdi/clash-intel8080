@@ -1,0 +1,39 @@
+name:                intel8080
+version:             0.1.0.0
+#synopsis:
+#description:
+#homepage:            https://github.com/gergoerdi/
+license:             MIT
+author:              Gergő Érdi
+maintainer:          gergo@erdi.hu
+copyright:           2019 Gergő Érdi
+category:            Hardware
+extra-source-files:
+  - README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+  - clash-prelude
+  - bytestring
+  - mtl
+  - transformers
+  - containers
+  - array
+  - lens
+  - generic-lens >= 1.1 && < 1.2
+  - singletons
+  - extra
+  - monad-loops
+  - higgledy >= 0.3 && < 0.4
+  - barbies >= 1.1 && < 1.2
+  - ghc-typelits-natnormalise
+  - ghc-typelits-extra
+
+executables:
+  test-bench-sim:
+    source-dirs:      clash-utils/src-clash src
+    main:             Hardware/Clash/Intel8080/TestBench.hs
+
+  test-bench-emu:
+    source-dirs:      clash-utils/src-clash src
+    main:             Hardware/Emulator/Intel8080/TestBench.hs

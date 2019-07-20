@@ -1,15 +1,6 @@
 resolver: lts-13.24
 
-packages:
-  - location:
-      git: https://github.com/gergoerdi/empty-clash
-      commit: f5ce90ce1
-    extra-dep: false
-
 extra-deps:
-#  - ghc-typelits-natnormalise-0.6.2
-#  - ghc-typelits-knownnat-0.6
-#  - ghc-typelits-extra-0.3.1
   - git: git@github.com:clash-lang/clash-compiler
     commit: 8ddd65254ade547501b76ae40304c2b7727763e5
     subdirs:
@@ -20,3 +11,5 @@ extra-deps:
 
   - git: https://github.com/clash-lang/ghc-typelits-extra
     commit: 145a1a524d9ee163887e7da2edc11cd2ff977ab8
+
+  - higgledy-0.3.0.0

@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, DataKinds, BinaryLiterals #-}
-module Hardware.Emulator.Intel8080.TestBench where
+module Main where
 
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench

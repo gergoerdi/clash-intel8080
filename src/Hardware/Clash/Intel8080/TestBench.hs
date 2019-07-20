@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, DataKinds, BinaryLiterals #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Hardware.Clash.Intel8080.TestBench where
+module Main where
 
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
