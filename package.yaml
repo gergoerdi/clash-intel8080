@@ -7,6 +7,7 @@ author:              Gergő Érdi
 maintainer:          gergo@erdi.hu
 copyright:           2019 Gergő Érdi
 category:            Hardware
+
 extra-source-files:
   - LICENSE
   - README.md
@@ -29,13 +30,30 @@ dependencies:
   - barbies >= 1.1 && < 1.2
   - ghc-typelits-natnormalise
   - ghc-typelits-extra
+  - ghc-typelits-knownnat
 
 source-dirs:
   - src
 
+library:
+  exposed-modules:
+    - Hardware.Intel8080
+    - Hardware.Intel8080.ISA
+    - Hardware.Intel8080.ALU
+    - Hardware.Intel8080.Decode
+    - Hardware.Intel8080.Microcode
+    - Hardware.Intel8080.TestBench
+
+    - Hardware.Emulator.Memory
+    - Hardware.Emulator.Intel8080.CPU
+
+    - Hardware.Clash.Intel8080.CPU
+    - Hardware.Clash.Intel8080.Interruptor
+    - Hardware.Clash.Intel8080.Sim
+
 executables:
   test-bench-sim:
-    main:             Hardware/Clash/Intel8080/TestBench.hs
+    main:             Hardware.Clash.Intel8080.TestBench
 
   test-bench-emu:
-    main:             Hardware/Emulator/Intel8080/TestBench.hs
+    main:             Hardware.Emulator.Intel8080.TestBench

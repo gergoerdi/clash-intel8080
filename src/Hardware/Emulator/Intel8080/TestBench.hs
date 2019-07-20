@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-module Main where
+module Hardware.Emulator.Intel8080.TestBench where
 
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench

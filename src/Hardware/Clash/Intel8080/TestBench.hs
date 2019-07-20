@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, TemplateHaskell #-}
-module Main where
+module Hardware.Clash.Intel8080.TestBench where
 
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
