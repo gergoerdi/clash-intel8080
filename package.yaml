@@ -1,6 +1,6 @@
 name:                intel8080
 version:             0.0.0.0
-synopsis:            Intel 8080 CPU core: software emulator and CLaSH hardware description 
+synopsis:            "Intel 8080 CPU core: software emulator and CLaSH hardware description"
 homepage:            https://github.com/gergoerdi/clash-intel8080
 license:             MIT
 author:              Gergő Érdi
