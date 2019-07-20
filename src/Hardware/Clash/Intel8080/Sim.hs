@@ -21,8 +21,8 @@ data IRQ
 data SimR m = MkSimR
     { readMem :: Addr -> m Value
     , writeMem :: Addr -> Value -> m ()
-    , readPort :: CPUState -> Port -> m Value
-    , writePort :: CPUState -> Port -> Value -> m ()
+    , inPort :: CPUState -> Port -> m Value
+    , outPort :: CPUState -> Port -> Value -> m ()
     }
 
 data SimS = MkSimS
@@ -53,7 +53,7 @@ sim stepCPU = do
         port <- use $ _1.selectedPort
         ack <- use $ _1.irqAck
         case port of
-            Just port -> lift $ readPort s port
+            Just port -> lift $ inPort s port
             Nothing
               | ack -> do
                   req <- use $ _1.irq
@@ -82,7 +82,7 @@ sim stepCPU = do
       then do
         let port = truncateB cpuOutMemAddr
         _1.selectedPort .= Just port
-        lift $ traverse_ (writePort s port) cpuOutMemWrite
+        lift $ traverse_ (outPort s port) cpuOutMemWrite
       else do
         _1.selectedPort .= Nothing
         for_ cpuOutMemWrite $ \val -> do
