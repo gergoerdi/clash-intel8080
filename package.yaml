@@ -35,6 +35,12 @@ dependencies:
 source-dirs:
   - src
 
+ghc-options:
+  -fexpose-all-unfoldings -fno-worker-wrapper
+  -fplugin GHC.TypeLits.KnownNat.Solver
+  -fplugin GHC.TypeLits.Normalise
+  -fplugin GHC.TypeLits.Extra.Solver
+
 library:
   exposed-modules:
     - Hardware.Intel8080
