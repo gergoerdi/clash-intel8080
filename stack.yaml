@@ -2,7 +2,7 @@ resolver: lts-13.28
 
 extra-deps:
   - git: git@github.com:clash-lang/clash-compiler
-    commit: 09c8aa49aa2aa80b638a565c471ab05d853d98be
+    commit: b89010af3bad709ec7554dd393ef3b42a4173fa4
     subdirs:
     - clash-prelude
 
