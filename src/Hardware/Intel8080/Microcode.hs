@@ -7,7 +7,7 @@ module Hardware.Intel8080.Microcode where
 import Prelude ()
 import Clash.Prelude
 
-import Data.Singletons.TH hiding (Undefined)
+import Data.Singletons.TH hiding (NFDataX)
 import Hardware.Intel8080
 import Hardware.Intel8080.Star
 
@@ -24,12 +24,12 @@ deriving instance Show Addressing
 data UpdateA
     = SetA
     | KeepA
-    deriving (Show, Eq, Generic, Undefined)
+    deriving (Show, Eq, Generic, NFDataX)
 
 data UpdateC
     = SetC
     | KeepC
-    deriving (Show, Eq, Generic, Undefined)
+    deriving (Show, Eq, Generic, NFDataX)
 
 data Effect
     = Get Reg
@@ -47,30 +47,30 @@ data Effect
     | Rst (Unsigned 3)
     | SetInt Bool
     | FixupBCD
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 data ALUArg
     = RegA
     | Const01
     | ConstFF
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 data ALU2
     = Inc2
     | Dec2
     | AddHL
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 data ALU0
     = Complement0
     | ConstTrue0
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 data Target
     = ValueBuf
     | AddrBuf
     | PC
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 type MacroSteps ends n = Star ends n Effect
 

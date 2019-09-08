@@ -20,7 +20,7 @@ rH = 4
 rL = 5
 
 data RegPair = Regs Reg Reg | SP
-    deriving (Eq, Ord, Show, Generic, Undefined)
+    deriving (Eq, Ord, Show, Generic, NFDataX)
 
 rBC, rDE, rHL :: RegPair
 rBC = Regs rB rC
@@ -39,7 +39,7 @@ fC = 0
 data Op
     = Reg Reg
     | AddrHL
-    deriving (Eq, Ord, Show, Generic, Undefined)
+    deriving (Eq, Ord, Show, Generic, NFDataX)
 
 type Value = Unsigned 8
 type Addr = Unsigned 16
@@ -49,13 +49,13 @@ type Interrupt = Unsigned 3
 data Src
     = Op Op
     | Imm
-    deriving (Eq, Ord, Show, Generic, Undefined)
+    deriving (Eq, Ord, Show, Generic, NFDataX)
 
 data ALU = ADD | ADC | SUB | SBB | AND | OR | XOR | RotateR | RotateL | ShiftR | ShiftL
-    deriving (Eq, Ord, Show, Enum, Bounded, Generic, Undefined)
+    deriving (Eq, Ord, Show, Enum, Bounded, Generic, NFDataX)
 
 data Cond = Cond Flag Bool
-    deriving (Eq, Ord, Show, Generic, Undefined)
+    deriving (Eq, Ord, Show, Generic, NFDataX)
 
 data Instr
     = MOV Op Src
@@ -99,4 +99,4 @@ data Instr
     | INT Bool
     | HLT
     | NOP
-    deriving (Eq, Ord, Show, Generic, Undefined)
+    deriving (Eq, Ord, Show, Generic, NFDataX)

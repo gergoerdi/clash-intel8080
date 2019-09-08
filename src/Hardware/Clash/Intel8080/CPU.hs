@@ -34,7 +34,7 @@ data Phase
     | Halted
     | Fetching Bool
     | Executing (Index MicroLen)
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 data CPUIn = CPUIn
     { cpuInMem :: Maybe Value
@@ -52,7 +52,7 @@ data CPUState = CPUState
     , valueBuf :: Value
     , addrBuf :: Addr
     }
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 instance (KnownNat n) => PrintfArg (Unsigned n) where
     formatArg x = formatArg (fromIntegral x :: Integer)
@@ -92,7 +92,7 @@ data CPUOut = CPUOut
     , cpuOutPortSelect :: Bool
     , cpuOutIRQAck :: Bool
     }
-    deriving (Show, Generic, Undefined)
+    deriving (Show, Generic, NFDataX)
 
 defaultOut :: CPUState -> CPUOut
 defaultOut CPUState{..} = CPUOut{..}
