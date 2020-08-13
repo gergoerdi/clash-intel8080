@@ -1,0 +1,7 @@
+name: clash-1.2
+resolver: lts-16.9
+
+packages:
+  - clash-ghc-1.2.4
+  - clash-prelude-1.2.4
+  - clash-lib-1.2.4

@@ -1,8 +1,8 @@
-resolver: clash-1.0.yaml
+resolver: clash-HEAD.yaml
 
 extra-deps:
-  - higgledy-0.3.0.0
-  
+  - barbies-2.0.1.0
+
 packages:
-  - clash-utils
+  - retroclash-lib
   - .

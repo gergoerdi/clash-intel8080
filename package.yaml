@@ -15,19 +15,16 @@ extra-source-files:
 dependencies:
   - base >= 4.7 && < 5
   - clash-prelude
-  - clash-retrocomputer-utils
+  - retroclash-lib
   - bytestring
   - mtl
   - transformers
   - containers
   - array
   - lens
-  - generic-lens >= 1.1 && < 1.2
   - singletons
   - extra
   - monad-loops
-  - higgledy >= 0.3 && < 0.4
-  - barbies >= 1.1 && < 1.2
   - ghc-typelits-natnormalise
   - ghc-typelits-extra
   - ghc-typelits-knownnat
