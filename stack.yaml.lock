@@ -57,6 +57,13 @@ packages:
       sha256: 154ccf6bf8816db6838d2b689ea821d818288a81b92b01e10c936536699f2e61
   original:
     hackage: barbies-2.0.1.0
+- completed:
+    hackage: barbies-th-0.1.2@sha256:6cde0729cd2b25b15d3af7bdee5c839365fa7a29ce254e4d6b6b957e89a8c756,1050
+    pantry-tree:
+      size: 370
+      sha256: a281dfb96666844490e27d497fb3e468d935eae143376815318d0d36f6b4fc16
+  original:
+    hackage: barbies-th-0.1.2
 snapshots:
 - completed:
     size: 532380

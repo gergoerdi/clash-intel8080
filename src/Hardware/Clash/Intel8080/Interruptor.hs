@@ -3,7 +3,7 @@ module Hardware.Clash.Intel8080.Interruptor where
 import Hardware.Intel8080 (Value, Interrupt)
 
 import Clash.Prelude
-import Cactus.Clash.Util
+import RetroClash.Utils
 import Control.Monad.State
 
 interruptor

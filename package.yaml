@@ -15,19 +15,23 @@ extra-source-files:
 dependencies:
   - base >= 4.7 && < 5
   - clash-prelude
+  - ghc-typelits-natnormalise
+  - ghc-typelits-extra
+  - ghc-typelits-knownnat
+
   - retroclash-lib
+
   - bytestring
   - mtl
   - transformers
+  - barbies ^>= 2.0.1
+  - barbies-th
   - containers
   - array
   - lens
   - singletons
   - extra
   - monad-loops
-  - ghc-typelits-natnormalise
-  - ghc-typelits-extra
-  - ghc-typelits-knownnat
 
 # Anything that Clash uses by default should go here
 default-extensions:
@@ -75,14 +79,14 @@ library:
     - Hardware.Intel8080.ALU
     - Hardware.Intel8080.Decode
     - Hardware.Intel8080.Microcode
-    - Hardware.Intel8080.TestBench
+    # - Hardware.Intel8080.TestBench
 
     - Hardware.Emulator.Memory
     - Hardware.Emulator.Intel8080.CPU
 
     - Hardware.Clash.Intel8080.CPU
     - Hardware.Clash.Intel8080.Interruptor
-    - Hardware.Clash.Intel8080.Sim
+    # - Hardware.Clash.Intel8080.Sim
 
 executables:
   test-bench-sim:

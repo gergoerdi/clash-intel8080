@@ -1,9 +1,9 @@
 module Hardware.Intel8080.TestBench where
 
+import Clash.Prelude
 import Hardware.Intel8080
 
-import Prelude ()
-import Clash.Prelude
+import Prelude (putChar)
 import Control.Monad
 import Data.Array
 import Data.Char

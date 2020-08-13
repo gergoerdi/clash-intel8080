@@ -1,16 +1,14 @@
-{-# LANGUAGE RecordWildCards, DataKinds, BinaryLiterals #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards, LambdaCase #-}
 module Hardware.Clash.Intel8080.Sim where
 
 import Hardware.Intel8080
 import Hardware.Clash.Intel8080.CPU
 
-import Clash.Prelude hiding ((!), delay, lift, (^))
-import Prelude ((^))
-import Control.Lens hiding (index)
+import Clash.Prelude hiding (lift)
 
-import Cactus.Clash.CPU
-import Control.Monad.RWS
+import RetroClash.Barbies
+import RetroClash.CPU
+
 import Control.Monad.State
 import Data.Foldable (traverse_, for_)
 
@@ -18,79 +16,46 @@ data IRQ
     = NewIRQ Value
     | QueuedIRQ Value
 
-data SimR m = MkSimR
+data World m = World
     { readMem :: Addr -> m Value
     , writeMem :: Addr -> Value -> m ()
     , inPort :: CPUState -> Port -> m Value
     , outPort :: CPUState -> Port -> Value -> m ()
     }
 
-data SimS = MkSimS
-    { _memPrevAddr :: Addr
-    , _selectedPort :: Maybe Port
-    , _irqAck :: Bool
-    , _irq :: Maybe IRQ
+initInput :: Pure CPUIn
+initInput = CPUIn
+    { cpuInMem = Nothing
+    , cpuInIRQ = False
     }
 
-makeLenses ''SimS
+world :: (Monad m) => World m -> CPUState -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
+world World{..} s CPUOut{..} = do
+    cpuInMem <- Just <$> read
+    lift $ traverse_ write _cpuOutMemWrite
 
-initSim :: SimS
-initSim = MkSimS
-    { _memPrevAddr = 0x0000
-    , _selectedPort = Nothing
-    , _irqAck = False
-    , _irq = Nothing
-    }
+    cpuInIRQ <- get >>= \case
+        Just (NewIRQ op) -> do
+            put $ Just $ QueuedIRQ op
+            return True
+        _ -> return False
 
-type SimT m = RWST (SimR m) () (SimS, CPUState) m
+    return CPUIn{..}
+  where
+    read | _cpuOutPortSelect = lift $ inPort s port
+         | _cpuOutIRQAck = get >>= \case
+            Just (QueuedIRQ op) -> do
+                put Nothing
+                return op
+            _ -> return 0x00
+         | otherwise = lift $ readMem _cpuOutMemAddr
 
-sim :: (Monad m) => CPU CPUIn CPUState CPUOut () -> SimT m ()
-sim stepCPU = do
-    MkSimR{..} <- ask
-    s <- use _2
+    write | _cpuOutPortSelect = outPort s port
+          | otherwise = writeMem _cpuOutMemAddr
 
-    cpuInMem <- Just <$> do
-        port <- use $ _1.selectedPort
-        ack <- use $ _1.irqAck
-        case port of
-            Just port -> lift $ inPort s port
-            Nothing
-              | ack -> do
-                  req <- use $ _1.irq
-                  case req of
-                      Just (QueuedIRQ op) -> do
-                          _1.irq .= Nothing
-                          return op
-                      _ -> return 0x00
-              | otherwise -> do
-                  addr <- use $ _1.memPrevAddr
-                  lift $ readMem addr
+    port = truncateB _cpuOutMemAddr
 
-    cpuInIRQ <- do
-        req <- use $ _1.irq
-        case req of
-            Just (NewIRQ op) -> do
-                _1.irq .= Just (QueuedIRQ op)
-                return True
-            _ -> return False
-
-    let (out@CPUOut{..}, s') = runState (runCPU defaultOut stepCPU CPUIn{..}) s
-    _2 .= s'
-
-    _1.memPrevAddr .= cpuOutMemAddr
-    if cpuOutPortSelect
-      then do
-        let port = truncateB cpuOutMemAddr
-        _1.selectedPort .= Just port
-        lift $ traverse_ (outPort s port) cpuOutMemWrite
-      else do
-        _1.selectedPort .= Nothing
-        for_ cpuOutMemWrite $ \val -> do
-            lift $ writeMem cpuOutMemAddr val
-    _1.irqAck .= cpuOutIRQAck
-
-interrupt :: (Monad m) => Unsigned 3 -> SimT m ()
-interrupt v = do
-    _1.irq .= Just (NewIRQ rst)
+interrupt :: (Monad m) => Unsigned 3 -> StateT (Maybe IRQ) m ()
+interrupt v = put $ Just $ NewIRQ rst
   where
     rst = bitCoerce (0b11 :: Unsigned 2, v, 0b111 :: Unsigned 3)

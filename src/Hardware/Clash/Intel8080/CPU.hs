@@ -4,19 +4,25 @@ module Hardware.Clash.Intel8080.CPU where
 import Prelude ()
 import Clash.Prelude hiding (lift)
 
+import RetroClash.Utils
+import RetroClash.CPU
+import RetroClash.Barbies
+
 import Hardware.Intel8080
 import Hardware.Intel8080.ISA
 import Hardware.Intel8080.Decode
 import Hardware.Intel8080.ALU
 import Hardware.Intel8080.Microcode
 import Control.Monad.Identity
-import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Trans.Except
+import Control.Monad.Trans.Maybe
 import Control.Monad.Extra (whenM)
+import Control.Lens hiding (Index)
 
-import Cactus.Clash.Util
-import Cactus.Clash.CPU
+import Barbies
+import Barbies.Bare
+import Data.Barbie.TH
+
 import Control.Monad.State
 import Data.Word
 import Data.Foldable (for_, traverse_)
@@ -32,11 +38,11 @@ data Phase
     | Executing (Index MicroLen)
     deriving (Show, Generic, NFDataX)
 
-data CPUIn = CPUIn
+declareBareB [d|
+  data CPUIn = CPUIn
     { cpuInMem :: Maybe Value
     , cpuInIRQ :: Bool
-    }
-    deriving (Show)
+    } |]
 
 data CPUState = CPUState
     { phase :: Phase
@@ -49,6 +55,38 @@ data CPUState = CPUState
     , addrBuf :: Addr
     }
     deriving (Show, Generic, NFDataX)
+
+initState :: CPUState
+initState = CPUState
+    { phase = Init
+    , pc = 0x0000
+    , sp = 0x0000
+    , registers = replace 1 0x02 $ pure 0x00
+    , allowInterrupts = False
+    , interrupted = False
+    , instrBuf = NOP
+    , valueBuf = 0x00
+    , addrBuf = 0x0000
+    }
+
+declareBareB [d|
+  data CPUOut = CPUOut
+      { _cpuOutMemAddr :: Addr
+      , _cpuOutMemWrite :: Maybe Value
+      , _cpuOutPortSelect :: Bool
+      , _cpuOutIRQAck :: Bool
+      } |]
+makeLenses ''CPUOut
+
+defaultOut :: CPUState -> Pure CPUOut
+defaultOut CPUState{..} = CPUOut{..}
+  where
+    _cpuOutMemAddr = addrBuf
+    _cpuOutMemWrite = Nothing
+    _cpuOutPortSelect = False
+    _cpuOutIRQAck = False
+
+type M = MaybeT (CPUM CPUState CPUOut)
 
 instance (KnownNat n) => PrintfArg (Unsigned n) where
     formatArg x = formatArg (fromIntegral x :: Integer)
@@ -69,37 +107,6 @@ traceState act = do
     x <- act
     trace (unlines [s, show x]) $ return x
 
-initState :: CPUState
-initState = CPUState
-    { phase = Init
-    , pc = 0x0000
-    , sp = 0x0000
-    , registers = replace 1 0x02 $ pure 0x00
-    , allowInterrupts = False
-    , interrupted = False
-    , instrBuf = NOP
-    , valueBuf = 0x00
-    , addrBuf = 0x0000
-    }
-
-data CPUOut = CPUOut
-    { cpuOutMemAddr :: Addr
-    , cpuOutMemWrite :: Maybe Value
-    , cpuOutPortSelect :: Bool
-    , cpuOutIRQAck :: Bool
-    }
-    deriving (Show, Generic, NFDataX)
-
-defaultOut :: CPUState -> CPUOut
-defaultOut CPUState{..} = CPUOut{..}
-  where
-    cpuOutMemAddr = addrBuf
-    cpuOutMemWrite = Nothing
-    cpuOutPortSelect = False
-    cpuOutIRQAck = False
-
-type M = CPU CPUIn CPUState CPUOut
-
 instance Intel8080 M where
     getReg r = gets $ (!! r) . registers
     {-# INLINE getReg #-}
@@ -113,38 +120,38 @@ instance Intel8080 M where
     setSP addr = modify $ \s -> s{ sp = addr }
     {-# INLINE setSP #-}
 
-latchInterrupt :: M Bool
-latchInterrupt = do
-    irq <- inputs cpuInIRQ
+latchInterrupt :: Pure CPUIn -> M Bool
+latchInterrupt CPUIn{..} = do
     allowed <- gets allowInterrupts
-    when (irq && allowed) $ modify $ \s -> s{ interrupted = True }
+    when (cpuInIRQ && allowed) $ modify $ \s -> s{ interrupted = True }
     gets interrupted
 
 acceptInterrupt :: M ()
 acceptInterrupt = do
     -- trace (show ("Interrupt accepted", pc)) $ return ()
     modify $ \s -> s{ allowInterrupts = False, interrupted = False }
-    output $ #cpuOutIRQAck True
+    cpuOutIRQAck .:= True
 
-readByte :: M Value
-readByte = maybe retry return =<< inputs cpuInMem
-  where
-    retry = abort
+readByte :: Pure CPUIn -> M Value
+readByte CPUIn{..} = maybe mzero return cpuInMem
 
-fetch :: M Value
-fetch = do
-    x <- readByte
+fetch :: Pure CPUIn -> M Value
+fetch inp = do
+    x <- readByte inp
     setPC =<< pure . (+ 1) =<< getPC
     return x
 
-cpu :: M ()
-cpu = do
-    interrupted <- latchInterrupt
+cpuMachine :: Pure CPUIn -> State CPUState (Pure CPUOut)
+cpuMachine = runCPU defaultOut . void . runMaybeT . cpu
+
+cpu :: Pure CPUIn -> M ()
+cpu inp@CPUIn{..} = do
+    interrupted <- latchInterrupt inp
     phase <- gets phase
 
     -- traceShow phase $ return ()
     case phase of
-        Halted -> abort
+        Halted -> mzero
         Init -> do
             setReg2 =<< getPC
             goto $ Fetching False
@@ -152,7 +159,7 @@ cpu = do
             acceptInterrupt
             goto $ Fetching True
         Fetching interrupting -> do
-            instr <- {- traceState $ -} decodeInstr <$> if interrupting then readByte else fetch
+            instr <- {- traceState $ -} decodeInstr <$> if interrupting then readByte inp else fetch inp
             modify $ \s -> s{ instrBuf = instr }
             let (setup, _) = microcode instr
             traverse_ addressing setup
@@ -161,7 +168,7 @@ cpu = do
             instr <- gets instrBuf
             let (uop, teardown) = snd (microcode instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
-            microexec uop
+            microexec inp uop
             traverse_ addressing teardown
             maybe nextInstr (goto . Executing) $ succIdx i
 
@@ -180,17 +187,17 @@ addressing IncrPC = tellAddr =<< gets pc <* modify (\s -> s{ pc = pc s + 1 })
 addressing IncrSP = tellAddr =<< gets sp  <* modify (\s -> s{ sp = sp s + 1 })
 addressing DecrSP = tellAddr =<< modify (\s -> s{ sp = sp s - 1 }) *> gets sp
 
-microexec :: Effect -> M ()
-microexec (Get r) = setReg1 =<< getReg r
-microexec (Set r) = setReg r =<< getReg1
-microexec (Get2 rp) = setReg2 =<< getRegPair rp
-microexec (Swap2 rp) = do
+microexec :: Pure CPUIn -> Effect -> M ()
+microexec inp (Get r) = setReg1 =<< getReg r
+microexec inp (Set r) = setReg r =<< getReg1
+microexec inp (Get2 rp) = setReg2 =<< getRegPair rp
+microexec inp (Swap2 rp) = do
     tmp <- getReg2
     setReg2 =<< getRegPair rp
     setRegPair rp tmp
-microexec Jump = setPC =<< getReg2
-microexec (ReadMem target) = do
-    x <- readByte
+microexec inp Jump = setPC =<< getReg2
+microexec inp (ReadMem target) = do
+    x <- readByte inp
     case target of
         ValueBuf -> setReg1 x
         AddrBuf -> do
@@ -199,7 +206,7 @@ microexec (ReadMem target) = do
         PC -> do
             (y, _) <- twist <$> getPC
             setPC $ bitCoerce (x, y)
-microexec (WriteMem target) = do
+microexec inp (WriteMem target) = do
     tellWrite =<< case target of
         ValueBuf -> getReg1
         AddrBuf -> do
@@ -210,10 +217,10 @@ microexec (WriteMem target) = do
             (v, pc') <- twist <$> getPC
             setPC pc'
             return v
-microexec (When cond) = do
+microexec inp (When cond) = do
     passed <- maybe (pure False) evalCond cond
-    unless passed $ nextInstr >> abort
-microexec (Compute arg fun updateC updateA) = do
+    unless passed $ nextInstr >> mzero
+microexec inp (Compute arg fun updateC updateA) = do
     c <- getFlag fC
     x <- case arg of
         RegA -> getReg rA
@@ -224,7 +231,7 @@ microexec (Compute arg fun updateC updateA) = do
     when (updateC == SetC) $ setFlag fC c'
     when (updateA == SetA) $ setFlag fA a'
     setReg1 result
-microexec (Compute2 fun2 updateC) = do
+microexec inp (Compute2 fun2 updateC) = do
     arg <- case fun2 of
         Inc2 -> return 0x0001
         Dec2 -> return 0xffff
@@ -233,19 +240,19 @@ microexec (Compute2 fun2 updateC) = do
     let (c', x') = bitCoerce $ x `add` arg
     setReg2 x'
     when (updateC == SetC) $ setFlag fC c'
-microexec (Compute0 flag fun0) = do
+microexec inp (Compute0 flag fun0) = do
     f <- getFlag flag
     setFlag flag $ case fun0 of
         ConstTrue0 -> True
         Complement0 -> complement f
-microexec (Rst rst) = setPC $ fromIntegral rst `shiftL` 3
-microexec (SetInt b) = setInt b
-microexec UpdateFlags = do
+microexec inp (Rst rst) = setPC $ fromIntegral rst `shiftL` 3
+microexec inp (SetInt b) = setInt b
+microexec inp UpdateFlags = do
     x <- getReg1
     setFlag fZ (x == 0)
     setFlag fS (x `testBit` 7)
     setFlag fP (even $ popCount x)
-microexec FixupBCD = do
+microexec inp FixupBCD = do
     a <- getFlag fA
     c <- getFlag fC
 
@@ -296,12 +303,12 @@ setInt :: Bool -> M ()
 setInt allow = modify $ \s -> s{ allowInterrupts = allow }
 
 tellAddr :: Addr -> M ()
-tellAddr = output . #cpuOutMemAddr
+tellAddr = (cpuOutMemAddr .:=)
 
 tellWrite :: Value -> M ()
-tellWrite = output . #cpuOutMemWrite . Just
+tellWrite = (cpuOutMemWrite .:=) . Just
 
 tellPort :: Value -> M ()
 tellPort port = do
-    output $ #cpuOutPortSelect True
+    cpuOutPortSelect .:= True
     tellAddr $ bitCoerce (port, port)
