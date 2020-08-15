@@ -21,20 +21,21 @@ import Data.Array.IO
 import Data.IORef
 import System.IO
 
-
+runTest :: FilePath -> IO ()
 runTest romFile = do
-    printf "Running tests from image %s\n" romFile
+    printf "\n%s> %s <%s\n" (L.replicate 10 '-') romFile (L.replicate 10 '-')
 
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     (arr :: IOUArray Word16 Word8) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
 
     finished <- newIORef False
-    let readMem = fmap fromIntegral . readArray arr . fromIntegral
-        writeMem addr = writeArray arr (fromIntegral addr) . fromIntegral
-        inPort s = inTestPort readMem (registers s !!)
-        outPort s = outTestPort (writeIORef finished True)
-        w = World{..} :: World IO
+    let w = World{..}
+          where
+            readMem = fmap fromIntegral . readArray arr . fromIntegral
+            writeMem addr = writeArray arr (fromIntegral addr) . fromIntegral
+            inPort s = inTestPort readMem (registers s !!)
+            outPort s = outTestPort (writeIORef finished True)
 
     let runSim act = evalStateT act (Nothing, initInput, initState{ pc = 0x0100 })
 
@@ -45,8 +46,7 @@ runTest romFile = do
         inp' <- zoom _1 $ world w s out
         _2 .= inp'
         _3 .= s'
-    putStrLn ""
-    return ()
+    printf "\n%s--%s--%s\n" (L.replicate 10 '-') ('-' <$ romFile) (L.replicate 10 '-')
 
 main :: IO ()
 main = do

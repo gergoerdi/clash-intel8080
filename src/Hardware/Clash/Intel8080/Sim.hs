@@ -20,7 +20,7 @@ data World m = World
     { readMem :: Addr -> m Value
     , writeMem :: Addr -> Value -> m ()
     , inPort :: CPUState -> Port -> m Value
-    , outPort :: CPUState -> Port -> Value -> m ()
+    , outPort :: CPUState -> Port -> Value -> m Value
     }
 
 initInput :: Pure CPUIn
@@ -32,7 +32,7 @@ initInput = CPUIn
 world :: (Monad m) => World m -> CPUState -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
 world World{..} s CPUOut{..} = do
     cpuInMem <- Just <$> read
-    lift $ traverse_ write _cpuOutMemWrite
+    unless _cpuOutPortSelect $ lift $ traverse_ (writeMem _cpuOutMemAddr) _cpuOutMemWrite
 
     cpuInIRQ <- get >>= \case
         Just (NewIRQ op) -> do
@@ -42,16 +42,13 @@ world World{..} s CPUOut{..} = do
 
     return CPUIn{..}
   where
-    read | _cpuOutPortSelect = lift $ inPort s port
+    read | _cpuOutPortSelect = lift $ maybe (inPort s port) (outPort s port) _cpuOutMemWrite
          | _cpuOutIRQAck = get >>= \case
             Just (QueuedIRQ op) -> do
                 put Nothing
                 return op
             _ -> return 0x00
          | otherwise = lift $ readMem _cpuOutMemAddr
-
-    write | _cpuOutPortSelect = outPort s port
-          | otherwise = writeMem _cpuOutMemAddr
 
     port = truncateB _cpuOutMemAddr
 

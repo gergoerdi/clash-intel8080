@@ -54,5 +54,7 @@ inTestPort readMem getReg port = do
         _ -> return ()
     return 0xff
 
-outTestPort :: IO () -> Port -> Value -> IO ()
-outTestPort finish _port _value = finish
+outTestPort :: IO () -> Port -> Value -> IO Value
+outTestPort finish _port _value = do
+    finish
+    return 0x00

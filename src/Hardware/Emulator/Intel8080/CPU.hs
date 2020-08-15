@@ -47,7 +47,7 @@ data R = MkR
     { readMem :: Addr -> IO Value
     , writeMem :: Addr -> Value -> IO ()
     , inPort :: Port -> IO Value
-    , outPort :: Port -> Value -> IO ()
+    , outPort :: Port -> Value -> IO Value
     }
 
 type CPU = MaybeT (RWST R () S IO)
@@ -121,7 +121,7 @@ popByte = do
 writePort :: Port -> Value -> CPU ()
 writePort port value = do
     write <- asks outPort
-    liftIO $ write port value
+    liftIO $ void $ write port value
 
 readPort :: Port -> CPU Value
 readPort port = do
