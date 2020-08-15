@@ -18,10 +18,10 @@ data IRQ
     | QueuedIRQ Value
 
 data World m = World
-    { readMem :: Addr -> m Value
+    { readMem :: Addr -> m (Maybe Value)
     , writeMem :: Addr -> Value -> m ()
-    , inPort :: Port -> m Value
-    , outPort :: Port -> Value -> m Value
+    , inPort :: Port -> m (Maybe Value)
+    , outPort :: Port -> Value -> m (Maybe Value)
     }
 
 initInput :: Pure CPUIn
@@ -32,7 +32,7 @@ initInput = CPUIn
 
 world :: (Monad m) => World m -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
 world World{..} CPUOut{..} = do
-    dataIn <- Just <$> read
+    dataIn <- read
     unless _portSelect $ lift $ traverse_ (writeMem _addrOut) _dataOut
 
     interruptRequest <- get >>= \case
@@ -47,8 +47,8 @@ world World{..} CPUOut{..} = do
          | _interruptAck = get >>= \case
             Just (QueuedIRQ op) -> do
                 put Nothing
-                return op
-            _ -> return 0x00
+                return $ Just op
+            _ -> return $ Just 0x00
          | otherwise = lift $ readMem _addrOut
 
     port = truncateB _addrOut
