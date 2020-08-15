@@ -93,9 +93,6 @@ writeByte x = do
       then writePort port x
       else pokeByte addr x
 
-instance (KnownNat n) => PrintfArg (Unsigned n) where
-    formatArg x = formatArg (fromIntegral x :: Integer)
-
 pokeByte :: Addr -> Value -> CPU ()
 pokeByte addr x = do
     writeMem <- asks writeMem

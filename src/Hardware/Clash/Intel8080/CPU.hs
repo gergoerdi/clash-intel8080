@@ -88,9 +88,6 @@ defaultOut CPUState{..} = CPUOut{..}
 
 type M = MaybeT (CPUM CPUState CPUOut)
 
-instance (KnownNat n) => PrintfArg (Unsigned n) where
-    formatArg x = formatArg (fromIntegral x :: Integer)
-
 pretty :: M String
 pretty = do
     pc <- getPC
