@@ -79,14 +79,11 @@ library:
     - Hardware.Intel8080.ALU
     - Hardware.Intel8080.Decode
     - Hardware.Intel8080.Microcode
-    # - Hardware.Intel8080.TestBench
 
-    - Hardware.Emulator.Memory
     - Hardware.Emulator.Intel8080.CPU
 
     - Hardware.Clash.Intel8080.CPU
     - Hardware.Clash.Intel8080.Interruptor
-    # - Hardware.Clash.Intel8080.Sim
 
 executables:
   test-bench-sim:

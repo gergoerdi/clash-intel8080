@@ -6,7 +6,6 @@ import Clash.Prelude hiding ((^))
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
 import Hardware.Emulator.Intel8080.CPU
-import Hardware.Emulator.Memory
 
 import Control.Monad.RWS
 import Control.Monad.State
@@ -23,16 +22,16 @@ import Text.Printf
 runTest romFile = banner romFile $ do
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
-    memArr <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
-    let mem = ram (memArr :: IOArray Addr Value)
+    (arr :: IOArray Addr Value) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
+    -- let mem = ram (memArr :: IOArray Addr Value)
 
     finished <- newIORef False
-    let inPort s = inTestPort (peekAt mem) (registers s !!)
+    let inPort s = inTestPort (readArray arr) (registers s !!)
         outPort _ = outTestPort (writeIORef finished True)
 
     let stepTB act = do
             s <- get
-            let r = MkR (peekAt mem) (pokeTo mem) (inPort s) (outPort s)
+            let r = MkR (readArray arr) (writeArray arr) (inPort s) (outPort s)
             (s, _) <- liftIO $ execRWST (runMaybeT act) r s
             put s
 
