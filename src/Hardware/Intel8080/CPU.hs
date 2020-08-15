@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards, LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Hardware.Intel8080.CPU where
 
-import Prelude ()
 import Clash.Prelude hiding (lift)
 
 import RetroClash.Utils
@@ -9,24 +9,20 @@ import RetroClash.CPU
 import RetroClash.Barbies
 
 import Hardware.Intel8080
-import Hardware.Intel8080.ISA
 import Hardware.Intel8080.Decode
-import Hardware.Intel8080.ALU
 import Hardware.Intel8080.Microcode
-import Control.Monad.Identity
+import qualified Hardware.Intel8080.MicroCPU as MCPU
+
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Trans.Maybe
-import Control.Monad.Extra (whenM)
 import Control.Lens hiding (Index)
+import Data.Foldable (traverse_)
+import Data.Maybe (fromMaybe)
 
 import Barbies
 import Barbies.Bare
 import Data.Barbie.TH
-
-import Control.Monad.State
-import Data.Word
-import Data.Foldable (for_, traverse_)
-import Data.Maybe (fromMaybe)
 
 import Debug.Trace
 import Text.Printf
@@ -93,7 +89,7 @@ pretty :: M String
 pretty = do
     pc <- use pc
     sp <- use sp
-    ~[bc, de, hl, af] <- mapM (getRegPair . uncurry Regs) [(rB, rC), (rD, rE), (rH, rL), (rA, rFlags)]
+    ~[bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(rB, rC), (rD, rE), (rH, rL), (rA, rFlags)]
     return $ unlines
       [ printf "IR:         PC: 0x%04x  SP: 0x%04x" pc sp
       , printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x" bc de hl af
@@ -105,24 +101,18 @@ traceState act = do
     x <- act
     trace (unlines [s, show x]) $ return x
 
-instance Intel8080 M where
-    getReg r = uses registers (!! r)
-    {-# INLINE getReg #-}
+instance MCPU.MicroState CPUState where
+    reg r = registers . lens (!! r) (\s v -> replace r v s)
+    pc = pc
+    sp = sp
+    valueBuf = valueBuf
+    addrBuf = addrBuf
 
-    setReg r v = registers %= replace r v
-    {-# INLINE setReg #-}
-
-    getSP = use sp
-    {-# INLINE getSP #-}
-
-    setSP = assign sp
-    {-# INLINE setSP #-}
-
-    getPC = use pc
-    {-# INLINE getPC #-}
-
-    setPC = assign pc
-    {-# INLINE setPC #-}
+instance MCPU.MicroM CPUState (ReaderT (Maybe Value) M) where
+    write = assignOut dataOut . Just
+    readByte = maybe mzero return =<< ask
+    nextInstr = lift nextInstr >> mzero
+    allowInterrupts = assign allowInterrupts
 
 latchInterrupt :: Pure CPUIn -> M Bool
 latchInterrupt CPUIn{..} = do
@@ -171,7 +161,7 @@ cpu inp@CPUIn{..} = do
             instr <- use instrBuf
             let (uop, teardown) = snd (microcode instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
-            uexec inp uop
+            runReaderT (MCPU.uexec uop) dataIn
             traverse_ addressing teardown
             maybe nextInstr (assign phase . Executing) $ succIdx i
 
@@ -182,100 +172,12 @@ nextInstr = do
 
 addressing :: Addressing -> M ()
 addressing Port = do
-    (port, _) <- twist <$> use addrBuf
+    (port, _) <- MCPU.twist <$> use addrBuf
     tellPort port
 addressing Indirect = assignOut addrOut =<< use addrBuf
 addressing IncrPC = assignOut addrOut =<< use pc <* (pc += 1)
 addressing IncrSP = assignOut addrOut =<< use sp  <* (sp += 1)
 addressing DecrSP = assignOut addrOut =<< (sp -= 1) *> use sp
-
-uexec :: Pure CPUIn -> Effect -> M ()
-uexec inp (Get r) = assign valueBuf =<< getReg r
-uexec inp (Set r) = setReg r =<< use valueBuf
-uexec inp (Get2 rp) = assign addrBuf =<< getRegPair rp
-uexec inp (Swap2 rp) = do
-    tmp <- use addrBuf
-    assign addrBuf =<< getRegPair rp
-    setRegPair rp tmp
-uexec inp Jump = assign pc =<< use addrBuf
-uexec inp (ReadMem target) = do
-    x <- readByte inp
-    case target of
-        ValueBuf -> valueBuf .= x
-        AddrBuf -> do
-            (y, _) <- twist <$> use addrBuf
-            addrBuf .= bitCoerce (x, y)
-        PC -> do
-            (y, _) <- twist <$> use pc
-            pc .= bitCoerce (x, y)
-uexec inp (WriteMem target) = do
-    assignOut dataOut . Just =<< case target of
-        ValueBuf -> use valueBuf
-        AddrBuf -> do
-            (v, addr') <- twist <$> use addrBuf
-            addrBuf .= addr'
-            return v
-        PC -> do
-            (v, pc') <- twist <$> use pc
-            pc .= pc'
-            return v
-uexec inp (When cond) = do
-    passed <- maybe (pure False) evalCond cond
-    unless passed $ nextInstr >> mzero
-uexec inp (Compute arg fun updateC updateA) = do
-    c <- getFlag fC
-    x <- case arg of
-        RegA -> getReg rA
-        Const01 -> pure 0x01
-        ConstFF -> pure 0xff
-    y <- use valueBuf
-    let (a', c', result) = alu fun c x y
-    when (updateC == SetC) $ setFlag fC c'
-    when (updateA == SetA) $ setFlag fA a'
-    valueBuf .= result
-uexec inp (Compute2 fun2 updateC) = do
-    arg <- case fun2 of
-        Inc2 -> return 0x0001
-        Dec2 -> return 0xffff
-        AddHL -> getRegPair rHL
-    x <- use addrBuf
-    let (c', x') = bitCoerce $ x `add` arg
-    addrBuf .= x'
-    when (updateC == SetC) $ setFlag fC c'
-uexec inp (Compute0 flag fun0) = do
-    f <- getFlag flag
-    setFlag flag $ case fun0 of
-        ConstTrue0 -> True
-        Complement0 -> complement f
-uexec inp (Rst rst) = pc .= fromIntegral rst `shiftL` 3
-uexec inp (SetInt b) = allowInterrupts .= b
-uexec inp UpdateFlags = do
-    x <- use valueBuf
-    setFlag fZ (x == 0)
-    setFlag fS (x `testBit` 7)
-    setFlag fP (even $ popCount x)
-uexec inp FixupBCD = do
-    a <- getFlag fA
-    c <- getFlag fC
-
-    x <- use valueBuf
-    (a, x) <- return $
-        let (_, x0) = bitCoerce x :: (Unsigned 4, Unsigned 4)
-        in if x0 > 9 || a then bitCoerce $ x `add` (0x06 :: Value) else (False, x)
-
-    (c, x) <- return $
-        let (x1, _) = bitCoerce x :: (Unsigned 4, Unsigned 4)
-        in if x1 > 9 || c then bitCoerce $ x `add` (0x60 :: Value) else (False, x)
-
-    setFlag fA a
-    setFlag fC c
-    valueBuf .= x
-
-twist :: Addr -> (Value, Addr)
-twist x = (hi, lohi)
-  where
-    (hi, lo) = bitCoerce x :: (Value, Value)
-    lohi = bitCoerce (lo, hi)
 
 tellPort :: Value -> M ()
 tellPort port = do

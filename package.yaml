@@ -75,7 +75,6 @@ source-dirs:
 library:
   exposed-modules:
     - Hardware.Intel8080
-    - Hardware.Intel8080.ISA
     - Hardware.Intel8080.Model
     - Hardware.Intel8080.CPU
     - Hardware.Intel8080.Interruptor
