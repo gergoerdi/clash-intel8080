@@ -8,8 +8,12 @@ import Data.Foldable (for_)
 class (Monad m) => Intel8080 m where
     getReg :: Reg -> m Value
     setReg :: Reg -> Value -> m ()
+
     getSP :: m Addr
     setSP :: Addr -> m ()
+
+    getPC :: m Addr
+    setPC :: Addr -> m ()
 
 evalCond :: (Intel8080 m) => Cond -> m Bool
 evalCond (Cond flag target) = (== target) <$> getFlag flag

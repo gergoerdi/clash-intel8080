@@ -115,8 +115,14 @@ instance Intel8080 M where
     getSP = use sp
     {-# INLINE getSP #-}
 
-    setSP addr = sp .= addr
+    setSP = assign sp
     {-# INLINE setSP #-}
+
+    getPC = use pc
+    {-# INLINE getPC #-}
+
+    setPC = assign pc
+    {-# INLINE setPC #-}
 
 latchInterrupt :: Pure CPUIn -> M Bool
 latchInterrupt CPUIn{..} = do

@@ -59,7 +59,10 @@ instance Intel8080 CPU where
     setReg r v = registers %= replace r v
 
     getSP = use sp
-    setSP addr = sp .= addr
+    setSP = assign sp
+
+    getPC = use pc
+    setPC = assign pc
 
 dumpState :: CPU ()
 dumpState = do
