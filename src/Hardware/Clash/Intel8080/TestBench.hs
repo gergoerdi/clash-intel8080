@@ -16,15 +16,12 @@ import Control.Monad.Loops (whileM_)
 import qualified Data.ByteString as BS
 import qualified Data.List as L
 import Data.Word
-import Text.Printf
 import Data.Array.IO
 import Data.IORef
 import System.IO
 
 runTest :: FilePath -> IO ()
-runTest romFile = do
-    printf "\n%s> %s <%s\n" (L.replicate 10 '-') romFile (L.replicate 10 '-')
-
+runTest romFile = banner romFile $ do
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     (arr :: IOUArray Word16 Word8) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
@@ -46,7 +43,6 @@ runTest romFile = do
         inp' <- zoom _1 $ world w s out
         _2 .= inp'
         _3 .= s'
-    printf "\n%s--%s--%s\n" (L.replicate 10 '-') ('-' <$ romFile) (L.replicate 10 '-')
 
 main :: IO ()
 main = do

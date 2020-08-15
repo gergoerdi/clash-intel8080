@@ -5,11 +5,13 @@ import Hardware.Intel8080
 
 import Prelude (putChar)
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Array
 import Data.Char
 import Data.Word (Word8)
 import qualified Data.List as L
 import qualified Data.ByteString as BS
+import Text.Printf
 
 instance (KnownNat n) => Ix (Unsigned n) where
     range (a, b) = [a..b]
@@ -58,3 +60,10 @@ outTestPort :: IO () -> Port -> Value -> IO Value
 outTestPort finish _port _value = do
     finish
     return 0x00
+
+banner :: (MonadIO m) => String -> m a -> m a
+banner title act = do
+    liftIO $ printf "\n%s> %s <%s\n" (L.replicate 10 '-') title (L.replicate 10 '-')
+    x <- act
+    liftIO $ printf "\n%s--%s--%s\n" (L.replicate 10 '-') ('-' <$ title) (L.replicate 10 '-')
+    return x
