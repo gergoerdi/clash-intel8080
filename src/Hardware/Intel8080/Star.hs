@@ -1,10 +1,6 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, PolyKinds, TypeOperators #-}
-{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses, TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances, FlexibleContexts, TypeApplications #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving, DeriveFunctor #-}
-
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
-
 module Hardware.Intel8080.Star
        ( Step(..)
        , Star(End), (>:>), (>++>)

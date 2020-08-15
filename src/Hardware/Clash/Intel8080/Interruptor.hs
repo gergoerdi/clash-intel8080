@@ -1,8 +1,3 @@
-{-# LANGUAGE ApplicativeDo, DataKinds, GADTs, FlexibleContexts #-}
-{-# LANGUAGE BinaryLiterals #-}
-
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Extra.Solver #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 module Hardware.Clash.Intel8080.Interruptor where
 
 import Hardware.Intel8080 (Value, Interrupt)

@@ -1,7 +1,4 @@
-{-# LANGUAGE DataKinds, TypeApplications, ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE BinaryLiterals #-}
-{-# LANGUAGE TypeSynonymInstances,FlexibleInstances #-}
 module Hardware.Emulator.Intel8080.CPU where
 
 import Hardware.Intel8080

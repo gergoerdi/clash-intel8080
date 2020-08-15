@@ -1,7 +1,4 @@
-{-# LANGUAGE GADTs, DataKinds #-}
-{-# LANGUAGE BinaryLiterals #-}
-{-# LANGUAGE TemplateHaskell, ViewPatterns #-}
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.Extra.Solver #-}
+{-# LANGUAGE ViewPatterns #-}
 module Hardware.Intel8080.Decode (decodeInstr) where
 
 import Prelude ()

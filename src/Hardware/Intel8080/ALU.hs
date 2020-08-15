@@ -1,6 +1,3 @@
-{-# LANGUAGE GADTs, DataKinds #-}
-{-# LANGUAGE BinaryLiterals #-}
-{-# LANGUAGE FlexibleContexts #-}
 module Hardware.Intel8080.ALU (alu) where
 
 import Prelude ()

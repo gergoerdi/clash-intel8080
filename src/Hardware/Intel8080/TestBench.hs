@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards, DataKinds, BinaryLiterals #-}
 module Hardware.Intel8080.TestBench where
 
 import Hardware.Intel8080

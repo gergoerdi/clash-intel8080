@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 module Hardware.Intel8080.ISA where
 
 import Prelude ()

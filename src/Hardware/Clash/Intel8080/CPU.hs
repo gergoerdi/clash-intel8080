@@ -1,8 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeSynonymInstances,FlexibleInstances #-}
-{-# LANGUAGE OverloadedLabels, DataKinds #-}
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE RecordWildCards #-}
 module Hardware.Clash.Intel8080.CPU where
 
 import Prelude ()

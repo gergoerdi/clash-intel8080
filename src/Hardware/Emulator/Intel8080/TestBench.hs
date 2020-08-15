@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 module Hardware.Emulator.Intel8080.TestBench where
 
 import Hardware.Intel8080

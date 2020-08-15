@@ -1,7 +1,6 @@
-{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
-{-# LANGUAGE GADTs, DataKinds, PolyKinds, KindSignatures, TypeFamilies, TypeApplications #-}
-{-# LANGUAGE PartialTypeSignatures, FlexibleContexts, TypeOperators #-}
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 module Hardware.Intel8080.Microcode where
 
 import Prelude ()

@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
 module Hardware.Clash.Intel8080.TestBench where
 
 import Hardware.Intel8080
