@@ -1,11 +1,9 @@
-module Hardware.Emulator.Intel8080.TestBench where
-
 import Prelude ((^))
 import Clash.Prelude hiding ((^))
 
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
-import Hardware.Emulator.Intel8080.CPU
+import Hardware.Intel8080.Model
 
 import Control.Monad.RWS
 import Control.Monad.State

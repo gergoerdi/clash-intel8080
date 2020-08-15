@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Hardware.Clash.Intel8080.CPU where
+module Hardware.Intel8080.CPU where
 
 import Prelude ()
 import Clash.Prelude hiding (lift)

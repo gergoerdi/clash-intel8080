@@ -76,18 +76,15 @@ library:
   exposed-modules:
     - Hardware.Intel8080
     - Hardware.Intel8080.ISA
-    - Hardware.Intel8080.ALU
-    - Hardware.Intel8080.Decode
-    - Hardware.Intel8080.Microcode
-
-    - Hardware.Emulator.Intel8080.CPU
-
-    - Hardware.Clash.Intel8080.CPU
-    - Hardware.Clash.Intel8080.Interruptor
+    - Hardware.Intel8080.Model
+    - Hardware.Intel8080.CPU
+    - Hardware.Intel8080.Interruptor
 
 executables:
   test-bench-sim:
-    main:             Hardware.Clash.Intel8080.TestBench
+    source-dirs: test
+    main: test-sim.hs
 
   test-bench-emu:
-    main:             Hardware.Emulator.Intel8080.TestBench
+    source-dirs: test
+    main: test-model.hs

@@ -1,4 +1,4 @@
-module Hardware.Clash.Intel8080.Interruptor where
+module Hardware.Intel8080.Interruptor where
 
 import Hardware.Intel8080 (Value, Interrupt)
 

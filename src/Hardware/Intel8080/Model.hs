@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Hardware.Emulator.Intel8080.CPU where
+module Hardware.Intel8080.Model where
 
 import Hardware.Intel8080
 import Hardware.Intel8080.ISA

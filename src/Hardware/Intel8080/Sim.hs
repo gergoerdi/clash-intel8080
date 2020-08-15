@@ -1,8 +1,8 @@
 {-# LANGUAGE RecordWildCards, LambdaCase #-}
-module Hardware.Clash.Intel8080.Sim where
+module Hardware.Intel8080.Sim where
 
 import Hardware.Intel8080
-import Hardware.Clash.Intel8080.CPU
+import Hardware.Intel8080.CPU
 
 import Clash.Prelude hiding (lift)
 
@@ -11,6 +11,7 @@ import RetroClash.CPU
 
 import Control.Monad.State
 import Data.Foldable (traverse_, for_)
+import Control.Lens hiding (index)
 
 data IRQ
     = NewIRQ Value
@@ -19,8 +20,8 @@ data IRQ
 data World m = World
     { readMem :: Addr -> m Value
     , writeMem :: Addr -> Value -> m ()
-    , inPort :: CPUState -> Port -> m Value
-    , outPort :: CPUState -> Port -> Value -> m Value
+    , inPort :: Port -> m Value
+    , outPort :: Port -> Value -> m Value
     }
 
 initInput :: Pure CPUIn
@@ -29,8 +30,8 @@ initInput = CPUIn
     , cpuInIRQ = False
     }
 
-world :: (Monad m) => World m -> CPUState -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
-world World{..} s CPUOut{..} = do
+world :: (Monad m) => World m -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
+world World{..} CPUOut{..} = do
     cpuInMem <- Just <$> read
     unless _cpuOutPortSelect $ lift $ traverse_ (writeMem _cpuOutMemAddr) _cpuOutMemWrite
 
@@ -42,7 +43,7 @@ world World{..} s CPUOut{..} = do
 
     return CPUIn{..}
   where
-    read | _cpuOutPortSelect = lift $ maybe (inPort s port) (outPort s port) _cpuOutMemWrite
+    read | _cpuOutPortSelect = lift $ maybe (inPort port) (outPort port) _cpuOutMemWrite
          | _cpuOutIRQAck = get >>= \case
             Just (QueuedIRQ op) -> do
                 put Nothing
@@ -51,6 +52,16 @@ world World{..} s CPUOut{..} = do
          | otherwise = lift $ readMem _cpuOutMemAddr
 
     port = truncateB _cpuOutMemAddr
+
+sim :: (Monad m) => (CPUState -> World m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m ()
+sim mkWorld = do
+    inp <- use _1
+    s <- use _2
+
+    let (out, s') = runState (cpuMachine inp) s
+    inp' <- zoom _3 $ world (mkWorld s) out
+    _1 .= inp'
+    _2 .= s'
 
 interrupt :: (Monad m) => Unsigned 3 -> StateT (Maybe IRQ) m ()
 interrupt v = put $ Just $ NewIRQ rst

@@ -1,14 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
-module Hardware.Clash.Intel8080.TestBench where
-
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
-import Hardware.Clash.Intel8080.CPU
-import Hardware.Clash.Intel8080.Sim
+import Hardware.Intel8080.CPU
+import Hardware.Intel8080.Sim
 
 import Clash.Prelude hiding (lift, (^))
 import Prelude ((^))
-import Control.Lens hiding (index)
 
 import Control.Monad.State
 import Control.Monad.Loops (whileM_)
@@ -27,22 +24,15 @@ runTest romFile = banner romFile $ do
     (arr :: IOUArray Word16 Word8) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
 
     finished <- newIORef False
-    let w = World{..}
+    let mkWorld s = World{..}
           where
             readMem = fmap fromIntegral . readArray arr . fromIntegral
             writeMem addr = writeArray arr (fromIntegral addr) . fromIntegral
-            inPort s = inTestPort readMem (registers s !!)
-            outPort s = outTestPort (writeIORef finished True)
+            inPort = inTestPort readMem (registers s !!)
+            outPort = outTestPort (writeIORef finished True)
 
-    let runSim act = evalStateT act (Nothing, initInput, initState{ pc = 0x0100 })
-
-    runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ do
-        inp <- use _2
-        s <- use _3
-        let (out, s') = runState (cpuMachine inp) s
-        inp' <- zoom _1 $ world w s out
-        _2 .= inp'
-        _3 .= s'
+    let runSim act = evalStateT act (initInput, initState{ pc = 0x0100 }, Nothing)
+    runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ sim mkWorld
 
 main :: IO ()
 main = do
