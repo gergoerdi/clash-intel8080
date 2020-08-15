@@ -24,7 +24,7 @@ runTest romFile = banner romFile $ do
     -- let mem = ram (memArr :: IOArray Addr Value)
 
     finished <- newIORef False
-    let inPort s = inTestPort (readArray arr) (registers s !!)
+    let inPort s = inTestPort (readArray arr) (_registers s !!)
         outPort _ = outTestPort (writeIORef finished True)
 
     let stepTB act = do
@@ -33,7 +33,7 @@ runTest romFile = banner romFile $ do
             (s, _) <- liftIO $ execRWST (runMaybeT act) r s
             put s
 
-    let s = mkS{ pc = 0x0100 }
+    let s = mkS{ _pc = 0x0100 }
     flip execStateT s $ whileM_ (liftIO $ not <$> readIORef finished) $ do
         stepTB step
 

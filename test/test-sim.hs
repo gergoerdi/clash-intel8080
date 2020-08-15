@@ -28,10 +28,10 @@ runTest romFile = banner romFile $ do
           where
             readMem = fmap fromIntegral . readArray arr . fromIntegral
             writeMem addr = writeArray arr (fromIntegral addr) . fromIntegral
-            inPort = inTestPort readMem (registers s !!)
+            inPort = inTestPort readMem (_registers s !!)
             outPort = outTestPort (writeIORef finished True)
 
-    let runSim act = evalStateT act (initInput, initState{ pc = 0x0100 }, Nothing)
+    let runSim act = evalStateT act (initInput, initState{ _pc = 0x0100 }, Nothing)
     runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ sim mkWorld
 
 main :: IO ()
