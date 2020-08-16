@@ -89,9 +89,11 @@ pretty :: M String
 pretty = do
     pc <- use pc
     sp <- use sp
+    valueBuf <- use valueBuf
+    addrBuf <- use addrBuf
     ~[bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(rB, rC), (rD, rE), (rH, rL), (rA, rFlags)]
     return $ unlines
-      [ printf "IR:         PC: 0x%04x  SP: 0x%04x" pc sp
+      [ printf "IR:         PC: 0x%04x  SP: 0x%04x  U1:   0x%02x  U2: 0x%04x" pc sp valueBuf addrBuf
       , printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x" bc de hl af
       ]
 
