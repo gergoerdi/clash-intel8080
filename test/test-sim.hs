@@ -16,6 +16,7 @@ import Data.Word
 import Data.Array.IO
 import Data.IORef
 import System.IO
+import System.Environment
 
 runTest :: FilePath -> IO ()
 runTest romFile = banner romFile $ do
@@ -38,9 +39,12 @@ main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
 
-    mapM_ runTest
-      [ "image/testbench/TST8080.COM"
-      , "image/testbench/8080PRE.COM"
-      , "image/testbench/CPUTEST.COM"
-      -- , "image/testbench/8080EXM.COM"
-      ]
+    args <- getArgs
+    let images = if not (null args) then args else
+            [ "image/testbench/TST8080.COM"
+            , "image/testbench/8080PRE.COM"
+            , "image/testbench/CPUTEST.COM"
+              -- , "image/testbench/8080EXM.COM"
+            ]
+
+    mapM_ runTest images
