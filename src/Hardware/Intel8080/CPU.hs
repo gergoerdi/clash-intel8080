@@ -15,6 +15,7 @@ import qualified Hardware.Intel8080.MicroCPU as MCPU
 
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
 import Control.Lens hiding (Index)
 import Data.Foldable (traverse_)
@@ -119,18 +120,18 @@ instance MCPU.MicroState CPUState where
     {-# INLINE addrBuf #-}
     addrBuf = addrBuf
 
-instance MCPU.MicroM CPUState (ReaderT (Maybe Value) M) where
+instance MCPU.MicroM CPUState (MaybeT (ReaderT (Maybe Value) M)) where
     {-# INLINE writeOut #-}
-    writeOut = assignOut dataOut . Just
+    writeOut = lift . assignOut dataOut . Just
 
     {-# INLINE readIn #-}
-    readIn = lift . doRead =<< ask
+    readIn = lift . lift . doRead =<< ask
 
     {-# INLINE nextInstr #-}
-    nextInstr = lift nextInstr >> mzero
+    nextInstr = mzero -- lift nextInstr >> mzero
 
     {-# INLINE allowInterrupts #-}
-    allowInterrupts = assign allowInterrupts
+    allowInterrupts = lift . assign allowInterrupts
 
 latchInterrupt :: Pure CPUIn -> M Bool
 latchInterrupt CPUIn{..} = do
@@ -162,7 +163,14 @@ fetch inp = do
     return x
 
 cpuMachine :: Pure CPUIn -> State CPUState (Pure CPUOut)
-cpuMachine = runCPU defaultOut . void . runMaybeT . cpu
+cpuMachine inp = do
+    s0 <- get
+    (x, out) <- runWriterT . runMaybeT $ cpu inp
+    case x of
+        Nothing -> do
+            put s0
+        Just () -> return ()
+    gets $ \s -> update (defaultOut s) out
 
 cpu :: Pure CPUIn -> M ()
 cpu inp@CPUIn{..} = do
@@ -185,9 +193,13 @@ cpu inp@CPUIn{..} = do
             instr <- use instrBuf
             let (uop, teardown) = snd (microcode instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
-            runReaderT (MCPU.uexec uop) dataIn
-            traverse_ addressing teardown
-            maybe nextInstr (assign phase . Executing) $ succIdx i
+            x <- runReaderT (runMaybeT $ MCPU.uexec uop) dataIn
+            case x of
+                Nothing -> do
+                    nextInstr
+                Just () -> do
+                    traverse_ addressing teardown
+                    maybe nextInstr (assign phase . Executing) $ succIdx i
 
 nextInstr :: M ()
 nextInstr = do
