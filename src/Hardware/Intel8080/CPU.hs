@@ -164,8 +164,7 @@ cpu inp@CPUIn{..} = do
     use phase >>= \case
         Halted -> mzero
         Init -> do
-            assign addrBuf =<< use pc
-            phase .= Fetching False
+            nextInstr
         Fetching False | interrupted -> do
             acceptInterrupt
             phase .= Fetching True
