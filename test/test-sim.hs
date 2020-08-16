@@ -9,6 +9,7 @@ import Prelude ((^))
 
 import Control.Monad.State
 import Control.Monad.Loops (whileM_)
+import Control.Lens hiding (Index)
 
 import qualified Data.ByteString as BS
 import qualified Data.List as L
@@ -25,16 +26,22 @@ runTest romFile = banner romFile $ do
     (arr :: IOUArray Word16 Word8) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
 
     finished <- newIORef False
-    let mkWorld s = World{..}
+    let mkWorld i s = World{..}
           where
             readMem_ = fmap fromIntegral . readArray arr . fromIntegral
-            readMem = fmap Just . readMem_
+            readMem addr = do
+                if i `elem` [0, 1, 2, 3, 7] then Just <$> readMem_ addr
+                  else return Nothing
             writeMem addr = writeArray arr (fromIntegral addr) . fromIntegral
-            inPort = inTestPort readMem_ (_registers s !!)
-            outPort = outTestPort (writeIORef finished True)
+            inPort r = Just <$> inTestPort readMem_ (_registers s !!) r
+            outPort r x = Just <$> outTestPort (writeIORef finished True) r x
 
-    let runSim act = evalStateT act (initInput, initState{ _pc = 0x0100 }, Nothing)
-    runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ sim mkWorld
+    let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, (initState{ _pc = 0x0100 }, mempty), Nothing))
+    runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ do
+    -- runSim $ replicateM_ 15 $ do
+        i <- use _1
+        zoom _2 $ sim (mkWorld i)
+        _1 += 1
 
 main :: IO ()
 main = do

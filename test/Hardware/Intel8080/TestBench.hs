@@ -41,8 +41,8 @@ prelude = L.take 0x100 $ framework <> L.repeat 0x00
         , [ 0xc9 ]              -- 0x0007: RET
         ]
 
-inTestPort :: (Addr -> IO Value) -> (Reg -> Value) -> Port -> IO (Maybe Value)
-inTestPort readMem getReg port = fmap Just $ do
+inTestPort :: (Addr -> IO Value) -> (Reg -> Value) -> Port -> IO Value
+inTestPort readMem getReg port = do
     case getReg rC of
         0x02 -> do -- Print character stored in E
             putChar . chr . fromIntegral $ getReg rE
@@ -56,10 +56,10 @@ inTestPort readMem getReg port = fmap Just $ do
         _ -> return ()
     return 0xff
 
-outTestPort :: IO () -> Port -> Value -> IO (Maybe Value)
+outTestPort :: IO () -> Port -> Value -> IO Value
 outTestPort finish _port _value = do
     finish
-    return Nothing
+    return 0x00
 
 banner :: (MonadIO m) => String -> m a -> m a
 banner title act = do

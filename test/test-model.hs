@@ -21,7 +21,6 @@ runTest romFile = banner romFile $ do
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     (arr :: IOArray Addr Value) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
-    -- let mem = ram (memArr :: IOArray Addr Value)
 
     finished <- newIORef False
     let inPort s = inTestPort (readArray arr) (_registers s !!)
