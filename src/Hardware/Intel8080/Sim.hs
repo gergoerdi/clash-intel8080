@@ -26,16 +26,16 @@ data World m = World
 
 initInput :: Pure CPUIn
 initInput = CPUIn
-    { cpuInMem = Nothing
-    , cpuInIRQ = False
+    { dataIn = Nothing
+    , interruptRequest = False
     }
 
 world :: (Monad m) => World m -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
 world World{..} CPUOut{..} = do
-    cpuInMem <- Just <$> read
-    unless _cpuOutPortSelect $ lift $ traverse_ (writeMem _cpuOutMemAddr) _cpuOutMemWrite
+    dataIn <- Just <$> read
+    unless _portSelect $ lift $ traverse_ (writeMem _addrOut) _dataOut
 
-    cpuInIRQ <- get >>= \case
+    interruptRequest <- get >>= \case
         Just (NewIRQ op) -> do
             put $ Just $ QueuedIRQ op
             return True
@@ -43,15 +43,15 @@ world World{..} CPUOut{..} = do
 
     return CPUIn{..}
   where
-    read | _cpuOutPortSelect = lift $ maybe (inPort port) (outPort port) _cpuOutMemWrite
-         | _cpuOutIRQAck = get >>= \case
+    read | _portSelect = lift $ maybe (inPort port) (outPort port) _dataOut
+         | _interruptAck = get >>= \case
             Just (QueuedIRQ op) -> do
                 put Nothing
                 return op
             _ -> return 0x00
-         | otherwise = lift $ readMem _cpuOutMemAddr
+         | otherwise = lift $ readMem _addrOut
 
-    port = truncateB _cpuOutMemAddr
+    port = truncateB _addrOut
 
 sim :: (Monad m) => (CPUState -> World m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m ()
 sim mkWorld = do

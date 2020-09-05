@@ -40,8 +40,8 @@ data Phase
 
 declareBareB [d|
   data CPUIn = CPUIn
-    { cpuInMem :: Maybe Value
-    , cpuInIRQ :: Bool
+    { dataIn :: Maybe Value
+    , interruptRequest :: Bool
     } |]
 
 data CPUState = CPUState
@@ -72,20 +72,20 @@ initState = CPUState
 
 declareBareB [d|
   data CPUOut = CPUOut
-      { _cpuOutMemAddr :: Addr
-      , _cpuOutMemWrite :: Maybe Value
-      , _cpuOutPortSelect :: Bool
-      , _cpuOutIRQAck :: Bool
+      { _addrOut :: Addr
+      , _dataOut :: Maybe Value
+      , _portSelect :: Bool
+      , _interruptAck :: Bool
       } |]
 makeLenses ''CPUOut
 
 defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{..} = CPUOut{..}
   where
-    _cpuOutMemAddr = _addrBuf
-    _cpuOutMemWrite = Nothing
-    _cpuOutPortSelect = False
-    _cpuOutIRQAck = False
+    _addrOut = _addrBuf
+    _dataOut = Nothing
+    _portSelect = False
+    _interruptAck = False
 
 type M = MaybeT (CPUM CPUState CPUOut)
 
@@ -121,7 +121,7 @@ instance Intel8080 M where
 latchInterrupt :: Pure CPUIn -> M Bool
 latchInterrupt CPUIn{..} = do
     allowed <- use allowInterrupts
-    when (cpuInIRQ && allowed) $ interrupted .= True
+    when (interruptRequest && allowed) $ interrupted .= True
     use interrupted
 
 acceptInterrupt :: M ()
@@ -129,10 +129,10 @@ acceptInterrupt = do
     -- trace (show ("Interrupt accepted", pc)) $ return ()
     allowInterrupts .= False
     interrupted .= False
-    cpuOutIRQAck .:= True
+    interruptAck .:= True
 
 readByte :: Pure CPUIn -> M Value
-readByte CPUIn{..} = maybe mzero return cpuInMem
+readByte CPUIn{..} = maybe mzero return dataIn
 
 fetch :: Pure CPUIn -> M Value
 fetch inp = do
@@ -171,18 +171,17 @@ cpu inp@CPUIn{..} = do
 
 nextInstr :: M ()
 nextInstr = do
-    assignOut cpuOutMemAddr =<< use pc
+    assignOut addrOut =<< use pc
     phase .= Fetching False
 
 addressing :: Addressing -> M ()
-addressing Indirect = do
-    assignOut cpuOutMemAddr =<< use addrBuf
 addressing Port = do
     (port, _) <- twist <$> use addrBuf
     tellPort port
-addressing IncrPC = assignOut cpuOutMemAddr =<< use pc <* (pc += 1)
-addressing IncrSP = assignOut cpuOutMemAddr =<< use sp  <* (sp += 1)
-addressing DecrSP = assignOut cpuOutMemAddr =<< (sp -= 1) *> use sp
+addressing Indirect = assignOut addrOut =<< use addrBuf
+addressing IncrPC = assignOut addrOut =<< use pc <* (pc += 1)
+addressing IncrSP = assignOut addrOut =<< use sp  <* (sp += 1)
+addressing DecrSP = assignOut addrOut =<< (sp -= 1) *> use sp
 
 uexec :: Pure CPUIn -> Effect -> M ()
 uexec inp (Get r) = assign valueBuf =<< getReg r
@@ -204,7 +203,7 @@ uexec inp (ReadMem target) = do
             (y, _) <- twist <$> use pc
             pc .= bitCoerce (x, y)
 uexec inp (WriteMem target) = do
-    assignOut cpuOutMemWrite . Just =<< case target of
+    assignOut dataOut . Just =<< case target of
         ValueBuf -> use valueBuf
         AddrBuf -> do
             (v, addr') <- twist <$> use addrBuf
@@ -274,5 +273,5 @@ twist x = (hi, lohi)
 
 tellPort :: Value -> M ()
 tellPort port = do
-    cpuOutPortSelect .:= True
-    cpuOutMemAddr .:= bitCoerce (port, port)
+    portSelect .:= True
+    addrOut .:= bitCoerce (port, port)
