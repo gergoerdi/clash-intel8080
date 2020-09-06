@@ -53,24 +53,7 @@ evalCond (Cond f target) = uses (flag f) (== target)
 uexec :: (MicroM s m) => Effect -> m ()
 uexec (Get r) = assign valueBuf =<< use (reg r)
 uexec (Set r) = assign (reg r) =<< use valueBuf
-uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
-uexec (Swap2 rp) = do
-    tmp <- use addrBuf
-    assign addrBuf =<< use (regPair rp)
-    regPair rp .= tmp
-uexec Jump = assign pc =<< use addrBuf
-uexec (ReadMem target) = do
-    x <- readIn
-    case target of
-        ValueBuf -> valueBuf .= x
-        AddrBuf -> do
-            (y, _) <- twist <$> use addrBuf
-            addrBuf .= bitCoerce (x, y)
-        PC -> do
-            (y, _) <- twist <$> use pc
-            assign pc $ bitCoerce (x, y)
-uexec (WriteMem target) = writeOut =<< case target of
-    ValueBuf -> use valueBuf
+uexec (ToBuf target) = assign valueBuf =<< case target of
     AddrBuf -> do
         (v, addr') <- twist <$> use addrBuf
         addrBuf .= addr'
@@ -79,6 +62,23 @@ uexec (WriteMem target) = writeOut =<< case target of
         (v, pc') <- twist <$> use pc
         pc .= pc'
         return v
+uexec (FromBuf target) = do
+    x <- use valueBuf
+    case target of
+        AddrBuf -> do
+            (y, _) <- twist <$> use addrBuf
+            addrBuf .= bitCoerce (x, y)
+        PC -> do
+            (y, _) <- twist <$> use pc
+            assign pc $ bitCoerce (x, y)
+uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
+uexec (Swap2 rp) = do
+    tmp <- use addrBuf
+    assign addrBuf =<< use (regPair rp)
+    regPair rp .= tmp
+uexec Jump = assign pc =<< use addrBuf
+uexec ReadMem = assign valueBuf =<< readIn
+uexec WriteMem = writeOut =<< use valueBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed nextInstr
