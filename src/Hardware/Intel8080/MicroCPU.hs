@@ -49,6 +49,7 @@ flag fl = reg rFlags . bitL fl . iso bitToBool boolToBit
 evalCond :: (MicroM s m) => Cond -> m Bool
 evalCond (Cond f target) = uses (flag f) (== target)
 
+{-# INLINE uexec #-}
 uexec :: (MicroM s m) => Effect -> m ()
 uexec (Get r) = assign valueBuf =<< use (reg r)
 uexec (Set r) = assign (reg r) =<< use valueBuf

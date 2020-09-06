@@ -102,16 +102,32 @@ traceState act = do
     trace (unlines [s, show x]) $ return x
 
 instance MCPU.MicroState CPUState where
+    {-# INLINE reg #-}
     reg r = registers . lens (!! r) (\s v -> replace r v s)
+
+    {-# INLINE pc #-}
     pc = pc
+
+    {-# INLINE sp #-}
     sp = sp
+
+    {-# INLINE valueBuf #-}
     valueBuf = valueBuf
+
+    {-# INLINE addrBuf #-}
     addrBuf = addrBuf
 
 instance MCPU.MicroM CPUState (ReaderT (Maybe Value) M) where
+    {-# INLINE write #-}
     write = assignOut dataOut . Just
+
+    {-# INLINE readByte #-}
     readByte = maybe mzero return =<< ask
+
+    {-# INLINE nextInstr #-}
     nextInstr = lift nextInstr >> mzero
+
+    {-# INLINE allowInterrupts #-}
     allowInterrupts = assign allowInterrupts
 
 latchInterrupt :: Pure CPUIn -> M Bool
