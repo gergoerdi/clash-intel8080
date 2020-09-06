@@ -50,6 +50,7 @@ data CPUState = CPUState
     , _instrBuf :: Instr
     , _valueBuf :: Value
     , _addrBuf :: Addr
+    , _addrLatch :: Maybe Addr
     }
     deriving (Show, Generic, NFDataX)
 makeLenses ''CPUState
@@ -65,6 +66,7 @@ initState = CPUState
     , _instrBuf = NOP
     , _valueBuf = 0x00
     , _addrBuf = 0x0000
+    , _addrLatch = Nothing
     }
 
 declareBareB [d|
@@ -79,7 +81,7 @@ makeLenses ''CPUOut
 defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{..} = CPUOut{..}
   where
-    _addrOut = _addrBuf
+    _addrOut = fromMaybe _addrBuf _addrLatch
     _dataOut = Nothing
     _portSelect = False
     _interruptAck = False
@@ -122,7 +124,9 @@ instance MCPU.MicroState CPUState where
 
 instance MCPU.MicroM CPUState (MaybeT (ReaderT (Maybe Value) M)) where
     {-# INLINE writeOut #-}
-    writeOut = lift . assignOut dataOut . Just
+    writeOut x = lift $ do
+        addrLatch .= Nothing
+        dataOut .:= Just x
 
     {-# INLINE readIn #-}
     readIn = lift . lift . doRead =<< ask
@@ -154,6 +158,7 @@ doRead = maybe retry ack
   where
     retry = mzero
     ack x = do
+        addrLatch .= Nothing
         return x
 
 fetch :: Pure CPUIn -> M Value
@@ -203,17 +208,22 @@ cpu inp@CPUIn{..} = do
 
 nextInstr :: M ()
 nextInstr = do
-    assignOut addrOut =<< use pc
+    tellAddr =<< use pc
     phase .= Fetching False
 
 addressing :: Addressing -> M ()
 addressing Port = do
     (port, _) <- MCPU.twist <$> use addrBuf
     tellPort port
-addressing Indirect = assignOut addrOut =<< use addrBuf
-addressing IncrPC = assignOut addrOut =<< use pc <* (pc += 1)
-addressing IncrSP = assignOut addrOut =<< use sp  <* (sp += 1)
-addressing DecrSP = assignOut addrOut =<< (sp -= 1) *> use sp
+addressing Indirect = tellAddr =<< use addrBuf
+addressing IncrPC = tellAddr =<< use pc <* (pc += 1)
+addressing IncrSP = tellAddr =<< use sp  <* (sp += 1)
+addressing DecrSP = tellAddr =<< (sp -= 1) *> use sp
+
+tellAddr :: Addr -> M ()
+tellAddr addr = do
+    addrLatch .= Just addr
+    addrOut .:= addr
 
 tellPort :: Value -> M ()
 tellPort port = do
