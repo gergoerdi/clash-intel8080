@@ -61,8 +61,8 @@ instance MCPU.MicroState S where
     addrBuf = ureg2
 
 instance MCPU.MicroM S CPU where
-    write = assign write . Just
-    readByte = readByte
+    writeOut = assign write . Just
+    readIn = readByte
     nextInstr = mzero
     allowInterrupts = assign allowInterrupts
 

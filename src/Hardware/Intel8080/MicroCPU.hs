@@ -31,8 +31,8 @@ class MicroState s where
     addrBuf :: Lens' s Addr
 
 class (MicroState s, MonadState s m) => MicroM s m | m -> s where
-    write :: Value -> m ()
-    readByte :: m Value
+    writeOut :: Value -> m ()
+    readIn :: m Value
     nextInstr :: m ()
     allowInterrupts :: Bool -> m ()
 
@@ -60,7 +60,7 @@ uexec (Swap2 rp) = do
     regPair rp .= tmp
 uexec Jump = assign pc =<< use addrBuf
 uexec (ReadMem target) = do
-    x <- readByte
+    x <- readIn
     case target of
         ValueBuf -> valueBuf .= x
         AddrBuf -> do
@@ -69,7 +69,7 @@ uexec (ReadMem target) = do
         PC -> do
             (y, _) <- twist <$> use pc
             assign pc $ bitCoerce (x, y)
-uexec (WriteMem target) = write =<< case target of
+uexec (WriteMem target) = writeOut =<< case target of
     ValueBuf -> use valueBuf
     AddrBuf -> do
         (v, addr') <- twist <$> use addrBuf

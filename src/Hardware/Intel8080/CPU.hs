@@ -120,11 +120,11 @@ instance MCPU.MicroState CPUState where
     addrBuf = addrBuf
 
 instance MCPU.MicroM CPUState (ReaderT (Maybe Value) M) where
-    {-# INLINE write #-}
-    write = assignOut dataOut . Just
+    {-# INLINE writeOut #-}
+    writeOut = assignOut dataOut . Just
 
-    {-# INLINE readByte #-}
-    readByte = maybe mzero return =<< ask
+    {-# INLINE readIn #-}
+    readIn = lift . doRead =<< ask
 
     {-# INLINE nextInstr #-}
     nextInstr = lift nextInstr >> mzero
@@ -146,7 +146,14 @@ acceptInterrupt = do
     interruptAck .:= True
 
 readByte :: Pure CPUIn -> M Value
-readByte CPUIn{..} = maybe mzero return dataIn
+readByte CPUIn{..} = doRead dataIn
+
+doRead :: Maybe Value -> M Value
+doRead = maybe retry ack
+  where
+    retry = mzero
+    ack x = do
+        return x
 
 fetch :: Pure CPUIn -> M Value
 fetch inp = do
