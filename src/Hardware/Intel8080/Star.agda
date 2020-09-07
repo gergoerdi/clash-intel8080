@@ -5,6 +5,7 @@ open import Data.Product
 open import Data.Unit
 open import Data.Bool
 open import Data.Nat
+open import Data.Sum
 open import Function
 
 module _ where
@@ -18,6 +19,10 @@ data Step (A : Set) {R W : Set} : R → W → Set where
 data Ends (R W : Set) : Set where
   empty : Ends R W
   nonEmpty : (r₀ : R) → (wₙ : W) → Ends R W
+
+data Star (A R W : Set) : Ends (Maybe R) (Maybe W) → Set where
+  empty : Star A R W empty
+  snoc : (r₀ : Maybe R) → (xs : List (A × Maybe (R ⊎ W))) → (x : A) → (wₙ : Maybe W) → Star A R W (nonEmpty r₀ wₙ)
 
 data Meet {W R : Set} : Maybe W → Maybe R → Set where
   noRW  :         Meet nothing  nothing
@@ -34,18 +39,14 @@ ConsOf r {.nothing} {(nonEmpty .nothing wₙ)} noRW  = nonEmpty r wₙ
 ConsOf r {w}        {(nonEmpty .nothing wₙ)} onlyW = nonEmpty r wₙ
 ConsOf r {.nothing} {(nonEmpty r₁ wₙ)}       onlyR = nonEmpty r wₙ
 
-data Star (A R W : Set) : Ends R W → Set where
-  empty : Star A R W empty
-  snoc : (r₀ : R) → (xs : List (A × W)) → (x : A) → (wₙ : W) → Star A R W (nonEmpty r₀ wₙ)
-
 cons : ∀ {r : Maybe R} {w : Maybe W} {ends} →
   (prf : Cons w ends) →
   Step A r w →
-  Star A (Maybe R) (Maybe W) ends →
-  Star A (Maybe R) (Maybe W) (ConsOf r prf)
+  Star A R W ends →
+  Star A R W (ConsOf r prf)
 cons tt (step r x w) empty = snoc r [] x w
 cons noRW  (step r x .nothing) (snoc .nothing xs xₙ wₙ) = snoc r ((x , nothing) ∷ xs) xₙ wₙ
-cons onlyW (step r x w)        (snoc .nothing xs xₙ wₙ) = snoc r ((x , w) ∷ xs) xₙ wₙ
+cons onlyW (step r x w)        (snoc .nothing xs xₙ wₙ) = snoc r ((x , Data.Maybe.map inj₂ w) ∷ xs) xₙ wₙ
 cons onlyR (step r x .nothing) (snoc r₁ xs xₙ wₙ)       = snoc r ((x , nothing) ∷ xs) xₙ wₙ
 
 Append : Ends (Maybe R) (Maybe W) → Ends (Maybe R) (Maybe W) → Set
@@ -60,20 +61,20 @@ AppendOf {ends1 = nonEmpty r₀ .nothing}   {ends2 = nonEmpty .nothing wₘ}    
 AppendOf {ends1 = nonEmpty r₀ .(just _)}  {ends2 = nonEmpty .nothing wₘ}         onlyW = nonEmpty r₀ wₘ
 AppendOf {ends1 = nonEmpty r₀ .nothing}   {ends2 = nonEmpty .(just _) wₘ}        onlyR = nonEmpty r₀ wₘ
 
-append : ∀ {r : Maybe R} {w : Maybe W} {ends1 ends2} →
+append : ∀ {ends1 ends2} →
   (prf : Append ends1 ends2) →
-  Star A (Maybe R) (Maybe W) ends1 →
-  Star A (Maybe R) (Maybe W) ends2 →
-  Star A (Maybe R) (Maybe W) (AppendOf prf)
+  Star A R W ends1 →
+  Star A R W ends2 →
+  Star A R W (AppendOf prf)
 append prf empty ss′ = ss′
 append prf ss@(snoc r₀ xs x wₙ) empty = ss
-append noRW  (snoc r₀ xs x .nothing)  (snoc .nothing ys y wₘ)  = snoc r₀ (xs ++ [ x , nothing ] ++ ys) y wₘ
-append onlyW (snoc r₀ xs x (just wₙ)) (snoc .nothing ys y wₘ)  = snoc r₀ (xs ++ [ x , just wₙ ] ++ ys) y wₘ
-append onlyR (snoc r₀ xs x .nothing)  (snoc .(just _) ys y wₘ) = snoc r₀ (xs ++ [ x , nothing ] ++ ys) y wₘ
+append noRW  (snoc r₀ xs x .nothing)  (snoc .nothing ys y wₘ)  = snoc r₀ (xs ++ [ (x , nothing) ] ++ ys) y wₘ
+append onlyW (snoc r₀ xs x (just wₙ)) (snoc .nothing ys y wₘ)  = snoc r₀ (xs ++ [ (x , just (inj₂ wₙ)) ] ++ ys) y wₘ
+append onlyR (snoc r₀ xs x .nothing)  (snoc .(just _) ys y wₘ) = snoc r₀ (xs ++ [ (x , nothing) ] ++ ys) y wₘ
 
-stepsOf : ∀ {A R W ends} → Star A (Maybe R) W ends → Maybe R × List (A × W)
+stepsOf : ∀ {A R W ends} → Star A R W ends → Maybe R × List (A × Maybe (R ⊎ W))
 stepsOf empty = nothing , []
-stepsOf (snoc r₀ xs x wₙ) = r₀ , xs ++ [ (x , wₙ) ]
+stepsOf (snoc r₀ xs x wₙ) = r₀ , xs ++ [ (x , Data.Maybe.map inj₂ wₙ) ]
 
 module _ where
   data From : Set where
@@ -88,11 +89,11 @@ module _ where
   ex1 : Step ℕ {R = Maybe From} {W = Maybe To} _ _
   ex1 = step (just fromA) 11 nothing
 
-  ss1 : Star ℕ (Maybe From) (Maybe To) _
+  ss1 : Star ℕ From To _
   ss1 =
     cons noRW ex1 $
     cons _ ex2 $
     empty
 
-  ex3 : Maybe From × List (ℕ × Maybe To)
+  ex3 : Maybe From × List (ℕ × Maybe (From ⊎ To))
   ex3 = stepsOf ss1
