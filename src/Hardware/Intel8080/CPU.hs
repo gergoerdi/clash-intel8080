@@ -123,13 +123,10 @@ instance MCPU.MicroState CPUState where
     addrBuf = addrBuf
 
 instance MCPU.MicroM CPUState (MaybeT (ReaderT (Maybe Value) M)) where
-    {-# INLINE writeOut #-}
-    writeOut x = lift $ do
-        addrLatch .= Nothing
-        dataOut .:= Just x
-
-    {-# INLINE readIn #-}
-    readIn = lift . lift . doRead =<< ask
+    {-# INLINE loadIn #-}
+    loadIn = do
+        x <- lift . lift . readFrom =<< ask
+        valueBuf .= x
 
     {-# INLINE nextInstr #-}
     nextInstr = mzero -- lift nextInstr >> mzero
@@ -151,10 +148,10 @@ acceptInterrupt = do
     interruptAck .:= True
 
 readByte :: Pure CPUIn -> M Value
-readByte CPUIn{..} = doRead dataIn
+readByte CPUIn{..} = readFrom dataIn
 
-doRead :: Maybe Value -> M Value
-doRead = maybe retry ack
+readFrom :: Maybe Value -> M Value
+readFrom = maybe retry ack
   where
     retry = mzero
     ack x = do
@@ -192,7 +189,7 @@ cpu inp@CPUIn{..} = do
             instr <- {- traceState $ -} decodeInstr <$> if interrupting then readByte inp else fetch inp
             instrBuf .= instr
             let (setup, _) = microcode instr
-            traverse_ addressing setup
+            traverse_ (addressing . Left) setup
             phase .= Executing 0
         Executing i -> do
             instr <- use instrBuf
@@ -208,24 +205,39 @@ cpu inp@CPUIn{..} = do
 
 nextInstr :: M ()
 nextInstr = do
-    tellAddr =<< use pc
+    latchAddr =<< use pc
     phase .= Fetching False
 
-addressing :: Addressing -> M ()
-addressing Port = do
-    (port, _) <- MCPU.twist <$> use addrBuf
-    tellPort port
-addressing Indirect = tellAddr =<< use addrBuf
-addressing IncrPC = tellAddr =<< use pc <* (pc += 1)
-addressing IncrSP = tellAddr =<< use sp  <* (sp += 1)
-addressing DecrSP = tellAddr =<< (sp -= 1) *> use sp
+addressing :: Either Addressing Addressing -> M ()
+addressing = either doRead doWrite
 
-tellAddr :: Addr -> M ()
-tellAddr addr = do
-    addrLatch .= Just addr
-    addrOut .:= addr
+targetAddress :: Addressing -> M (Either Port Addr)
+targetAddress Port = do
+    (port, _) <- MCPU.twist <$> use addrBuf
+    return $ Left port
+targetAddress Indirect = Right <$> use addrBuf
+targetAddress IncrPC = Right <$> (use pc <* (pc += 1))
+targetAddress IncrSP = Right <$> (use sp <* (sp += 1))
+targetAddress DecrSP = Right <$> ((sp -= 1) *> use sp)
+
+doWrite :: Addressing -> M ()
+doWrite addr = do
+    target <- targetAddress addr
+    either tellPort (addrOut .:=) target
+    value <- use valueBuf
+    dataOut .:= Just value
+
+doRead :: Addressing -> M ()
+doRead addr = do
+    target <- targetAddress addr
+    either tellPort latchAddr target
 
 tellPort :: Value -> M ()
 tellPort port = do
     portSelect .:= True
     addrOut .:= bitCoerce (port, port)
+
+latchAddr :: Addr -> M ()
+latchAddr addr = do
+    addrLatch .= Just addr
+    addrOut .:= addr

@@ -110,12 +110,12 @@ append ss@(Snoc xs xn) ss'@(Snoc ys ym) = Snoc (xs ++ singleton (xn, mid ss ss')
 infixr 5 >++>
 (>++>) = append
 
-stepsOf'
+stepsOf
     :: forall (ends :: Ends (Maybe r) (Maybe w)) n a.
        Star ends n a
     -> (Maybe (Demote r), Vec n (a, Maybe (Demote (Either r w))))
-stepsOf' End = (Nothing, Nil)
-stepsOf' ss@(Snoc xs xn) = (start ss, xs ++ singleton (xn, end ss))
+stepsOf End = (Nothing, Nil)
+stepsOf ss@(Snoc xs xn) = (start ss, xs ++ singleton (xn, end ss))
   where
     start
         :: forall (r0 :: Maybe r) (wn :: Maybe w). (SingI r0)
@@ -128,9 +128,3 @@ stepsOf' ss@(Snoc xs xn) = (start ss, xs ++ singleton (xn, end ss))
         => Star (NonEmpty r0 wn) n a
         -> Demote (Maybe (Either r w))
     end _ = Right <$> demote @wn
-
-stepsOf
-    :: forall (ends :: Ends (Maybe rw) (Maybe rw)) n a.
-       Star ends n a
-    -> (Maybe (Demote rw), Vec n (a, Maybe (Demote rw)))
-stepsOf = fmap (map . fmap . fmap $ either id id) . stepsOf'

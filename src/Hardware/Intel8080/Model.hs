@@ -24,9 +24,6 @@ data S = MkS
     , _registers :: Vec 8 Value
     , _ureg1 :: Value
     , _ureg2 :: Addr
-    , _targetPort :: Bool
-    , _addr :: Addr
-    , _write :: Maybe Value
     }
     deriving (Show)
 makeLenses ''S
@@ -40,9 +37,6 @@ mkS = MkS{..}
     _registers = replace 1 0x02 $ pure 0x00
     _ureg1 = 0
     _ureg2 = 0
-    _targetPort = False
-    _addr = 0
-    _write = Nothing
 
 data R = MkR
     { readMem :: Addr -> IO Value
@@ -61,8 +55,7 @@ instance MCPU.MicroState S where
     addrBuf = ureg2
 
 instance MCPU.MicroM S CPU where
-    writeOut = assign write . Just
-    readIn = readByte
+    loadIn = return ()
     nextInstr = mzero
     allowInterrupts = assign allowInterrupts
 
@@ -75,44 +68,15 @@ dumpState = do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
 
-peekByte :: Addr -> CPU Value
-peekByte addr = do
-    readMem <- asks readMem
-    liftIO $ readMem addr
-
-readByte :: CPU Value
-readByte = do
-    isPort <- use targetPort
-    addr <- use addr
-    let port = fromIntegral addr
-    if isPort then readPort port else peekByte addr
-
-writeByte :: Value -> CPU ()
-writeByte x = do
-    isPort <- use targetPort
-    addr <- use addr
-    let port = fromIntegral addr
-    if isPort then writePort port x else pokeByte addr x
-
-pokeByte :: Addr -> Value -> CPU ()
-pokeByte addr x = do
-    writeMem <- asks writeMem
-    liftIO $ writeMem addr x
-
 fetchByte :: CPU Value
 fetchByte = do
     pc <- use pc <* (pc += 1)
     peekByte pc
 
-writePort :: Port -> Value -> CPU ()
-writePort port value = do
-    write <- asks outPort
-    liftIO $ void $ write port value
-
-readPort :: Port -> CPU Value
-readPort port = do
-    read <- asks inPort
-    liftIO $ read port
+peekByte :: Addr -> CPU Value
+peekByte addr = do
+    readMem <- asks readMem
+    liftIO $ readMem addr
 
 step :: CPU ()
 step = do
@@ -126,33 +90,46 @@ interrupt instr = whenM (use allowInterrupts) $ do
 
 exec :: Instr -> CPU ()
 exec instr = do
-    uinit
     let (setup, uops) = microcode instr
-    traverse_ addressing setup
+    traverse_ (addressing . Left) setup
     -- liftIO $ print (instr, uops)
     mapM_ ustep uops
 
-uinit :: CPU ()
-uinit = do
-    targetPort .= False
+addressing :: Either Addressing Addressing -> CPU ()
+addressing = either doRead doWrite
 
-addressing :: Addressing -> CPU ()
-addressing Port = do
+targetAddress :: Addressing -> CPU (Either Port Addr)
+targetAddress Port = do
     (port, _) <- MCPU.twist <$> use ureg2
-    tellPort port
-addressing Indirect = assign addr =<< use ureg2
-addressing IncrPC = assign addr =<< use pc <* (pc += 1)
-addressing IncrSP = assign addr =<< use sp <* (sp += 1)
-addressing DecrSP = assign addr =<< (sp -= 1) *> use sp
+    return $ Left port
+targetAddress Indirect = Right <$> use ureg2
+targetAddress IncrPC = Right <$> (use pc <* (pc += 1))
+targetAddress IncrSP = Right <$> (use sp <* (sp += 1))
+targetAddress DecrSP = Right <$> ((sp -= 1) *> use sp)
 
-tellPort :: Value -> CPU ()
-tellPort port = do
-    targetPort .= True
-    addr .= bitCoerce (port, port)
+doWrite :: Addressing -> CPU ()
+doWrite addr = do
+    target <- targetAddress addr
+    either writePort poke target =<< use ureg1
+  where
+    writePort port value = do
+        write <- asks outPort
+        liftIO $ void $ write port value
+
+    poke addr value = do
+        writeMem <- asks writeMem
+        liftIO $ writeMem addr value
+
+doRead :: Addressing -> CPU ()
+doRead addr = do
+    target <- targetAddress addr
+    assign ureg1 =<< either readPort peekByte target
+  where
+    readPort port = do
+        read <- asks inPort
+        liftIO $ read port
 
 ustep :: MicroOp -> CPU ()
 ustep (effect, post) = do
-    write .= Nothing
     MCPU.uexec effect
     traverse_ addressing post
-    traverse_ writeByte =<< use write

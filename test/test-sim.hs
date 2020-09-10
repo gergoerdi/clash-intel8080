@@ -36,7 +36,7 @@ runTest romFile = banner romFile $ do
             inPort r = Just <$> inTestPort readMem_ (_registers s !!) r
             outPort r x = Just <$> outTestPort (writeIORef finished True) r x
 
-    let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, (initState{ _pc = 0x0100 }, mempty), Nothing))
+    let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState{ _pc = 0x0100 }, Nothing))
     runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ do
     -- runSim $ replicateM_ 15 $ do
         i <- use _1

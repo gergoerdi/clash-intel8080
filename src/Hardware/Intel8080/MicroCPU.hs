@@ -31,8 +31,7 @@ class MicroState s where
     addrBuf :: Lens' s Addr
 
 class (MicroState s, MonadState s m) => MicroM s m | m -> s where
-    writeOut :: Value -> m ()
-    readIn :: m Value
+    loadIn :: m ()
     nextInstr :: m ()
     allowInterrupts :: Bool -> m ()
 
@@ -77,8 +76,7 @@ uexec (Swap2 rp) = do
     assign addrBuf =<< use (regPair rp)
     regPair rp .= tmp
 uexec Jump = assign pc =<< use addrBuf
-uexec ReadMem = assign valueBuf =<< readIn
-uexec WriteMem = writeOut =<< use valueBuf
+uexec ReadMem = loadIn
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed nextInstr
