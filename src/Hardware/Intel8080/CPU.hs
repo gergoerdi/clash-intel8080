@@ -209,27 +209,16 @@ nextInstr = do
     phase .= Fetching False
 
 addressing :: Either Addressing Addressing -> M ()
-addressing = either doRead doWrite
+addressing = either (doRead <=< MCPU.targetAddress) (doWrite <=< MCPU.targetAddress)
 
-targetAddress :: Addressing -> M (Either Port Addr)
-targetAddress Port = do
-    (port, _) <- MCPU.twist <$> use addrBuf
-    return $ Left port
-targetAddress Indirect = Right <$> use addrBuf
-targetAddress IncrPC = Right <$> (use pc <* (pc += 1))
-targetAddress IncrSP = Right <$> (use sp <* (sp += 1))
-targetAddress DecrSP = Right <$> ((sp -= 1) *> use sp)
-
-doWrite :: Addressing -> M ()
-doWrite addr = do
-    target <- targetAddress addr
+doWrite :: Either Port Addr -> M ()
+doWrite target = do
     either tellPort (addrOut .:=) target
     value <- use valueBuf
     dataOut .:= Just value
 
-doRead :: Addressing -> M ()
-doRead addr = do
-    target <- targetAddress addr
+doRead :: Either Port Addr -> M ()
+doRead target = do
     either tellPort latchAddr target
 
 tellPort :: Value -> M ()

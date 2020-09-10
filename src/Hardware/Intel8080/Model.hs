@@ -96,21 +96,10 @@ exec instr = do
     mapM_ ustep uops
 
 addressing :: Either Addressing Addressing -> CPU ()
-addressing = either doRead doWrite
+addressing = either (doRead <=< MCPU.targetAddress) (doWrite <=< MCPU.targetAddress)
 
-targetAddress :: Addressing -> CPU (Either Port Addr)
-targetAddress Port = do
-    (port, _) <- MCPU.twist <$> use ureg2
-    return $ Left port
-targetAddress Indirect = Right <$> use ureg2
-targetAddress IncrPC = Right <$> (use pc <* (pc += 1))
-targetAddress IncrSP = Right <$> (use sp <* (sp += 1))
-targetAddress DecrSP = Right <$> ((sp -= 1) *> use sp)
-
-doWrite :: Addressing -> CPU ()
-doWrite addr = do
-    target <- targetAddress addr
-    either writePort poke target =<< use ureg1
+doWrite :: Either Port Addr -> CPU ()
+doWrite target = either writePort poke target =<< use ureg1
   where
     writePort port value = do
         write <- asks outPort
@@ -120,10 +109,8 @@ doWrite addr = do
         writeMem <- asks writeMem
         liftIO $ writeMem addr value
 
-doRead :: Addressing -> CPU ()
-doRead addr = do
-    target <- targetAddress addr
-    assign ureg1 =<< either readPort peekByte target
+doRead :: Either Port Addr -> CPU ()
+doRead target = assign ureg1 =<< either readPort peekByte target
   where
     readPort port = do
         read <- asks inPort
