@@ -84,10 +84,16 @@ data-files:
   - image/*/*.COM
 
 executables:
+  test-bench-model:
+    source-dirs: test
+    main: test-model.hs
+
   test-bench-sim:
     source-dirs: test
     main: test-sim.hs
 
-  test-bench-emu:
+  tinybasic-model:
     source-dirs: test
-    main: test-model.hs
+    main: tinybasic-model.hs
+    dependencies:
+      - terminal

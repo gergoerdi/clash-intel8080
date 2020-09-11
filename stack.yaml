@@ -3,6 +3,7 @@ resolver: clash-HEAD.yaml
 extra-deps:
   - barbies-2.0.1.0
   - barbies-th-0.1.2
+  - terminal-0.2.0.0
 
 packages:
   - retroclash-lib

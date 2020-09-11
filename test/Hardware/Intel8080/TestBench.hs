@@ -13,6 +13,7 @@ import qualified Data.List as L
 import qualified Data.ByteString as BS
 import Text.Printf
 
+-- TODO: Upgrade Clash so we have that...
 instance (KnownNat n) => Ix (Unsigned n) where
     range (a, b) = [a..b]
     index (a, b) x = index (fromIntegral a, fromIntegral b) (fromIntegral x)
