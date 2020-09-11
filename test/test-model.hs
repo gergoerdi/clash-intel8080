@@ -26,12 +26,12 @@ runTest romFile = banner romFile $ do
     (arr :: IOArray Addr Value) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
 
     finished <- newIORef False
-    let inPort s = inTestPort (readArray arr) (_registers s !!)
-        outPort _ = outTestPort (writeIORef finished True)
+    let inPort _ = return 0xff
+        outPort = outTestPort (writeIORef finished True)
 
     let stepTB act = do
             s <- get
-            let r = MkR (readArray arr) (writeArray arr) (inPort s) (outPort s)
+            let r = MkR (readArray arr) (writeArray arr) inPort outPort
             (s, _) <- liftIO $ execRWST (runMaybeT act) r s
             put s
 

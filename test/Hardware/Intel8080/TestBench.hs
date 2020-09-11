@@ -36,30 +36,30 @@ prelude :: [Word8]
 prelude = L.take 0x100 $ framework <> L.repeat 0x00
   where
     framework = mconcat
-        [ [ 0xd3, 0x00 ]        -- 0x0000: OUT 0, A
+        [ [ 0xd3, 0x00 ]        -- 0x0000: OUT 0
         , [ 0x00, 0x00, 0x00 ]
-        , [ 0xdb, 0x00 ]        -- 0x0005: IN A, 0
-        , [ 0xc9 ]              -- 0x0007: RET
+        , [ 0x3e, 0x02 ]        -- 0x0005: MVI A, 0x02
+        , [ 0xb9 ]              -- 0x0007: CMP C
+        , [ 0xc2, 0x0f, 0x00 ]  -- 0x0008: JNZ 0x000f
+        , [ 0x7b ]              -- 0x000B: MOV A, E
+        , [ 0xd3, 0x01 ]        -- 0x000C: OUT 1
+        , [ 0xc9 ]              -- 0x000E: RET
+
+        , [ 0x0e, 0x24 ]        -- 0x000F: MVI C, '$'
+        , [ 0x1a ]              -- 0x0011: LDAX DE
+        , [ 0xb9 ]              -- 0x0012: CMP C
+        , [ 0xc2, 0x17, 0x00 ]  -- 0x0013: JNZ 0x0017
+        , [ 0xc9 ]              -- 0x0016: RET
+        , [ 0xd3, 0x01 ]        -- 0x0017: OUT 1
+        , [ 0x13 ]              -- 0x0019: INX DE
+        , [ 0xc3, 0x10, 0x00 ]  -- 0x001a: JMP 0x0011
         ]
 
-inTestPort :: (Addr -> IO Value) -> (Reg -> Value) -> Port -> IO Value
-inTestPort readMem getReg port = do
-    case getReg rC of
-        0x02 -> do -- Print character stored in E
-            putChar . chr . fromIntegral $ getReg rE
-        0x09 -> do -- Print from (DE) until '$'
-            let start = bitCoerce (getReg rD, getReg rE)
-                addrs = [start..]
-            bs <- forWhileM addrs $ \addr -> do
-                b <- readMem addr
-                return $ guard (fromIntegral b /= ord '$') >> return b
-            mapM_ (putChar . chr . fromIntegral) bs
-        _ -> return ()
-    return 0xff
-
 outTestPort :: IO () -> Port -> Value -> IO Value
-outTestPort finish _port _value = do
-    finish
+outTestPort finish port value = do
+    case port of
+        0x00 -> finish
+        0x01 -> putChar . chr . fromIntegral $ value
     return 0x00
 
 banner :: (MonadIO m) => String -> m a -> m a
