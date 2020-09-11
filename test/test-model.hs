@@ -17,7 +17,10 @@ import qualified Data.ByteString as BS
 import System.IO
 import Text.Printf
 
+import Paths_intel8080
+
 runTest romFile = banner romFile $ do
+    romFile <- getDataFileName romFile
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     (arr :: IOArray Addr Value) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
@@ -43,6 +46,6 @@ main = do
     mapM_ runTest
       [ "image/testbench/TST8080.COM"
       , "image/testbench/8080PRE.COM"
-      , "image/testbench/CPUTEST.COM"
+      -- , "image/testbench/CPUTEST.COM"
       -- , "image/testbench/8080EXM.COM"
       ]

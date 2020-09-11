@@ -79,6 +79,10 @@ library:
     - Hardware.Intel8080.CPU
     - Hardware.Intel8080.Interruptor
 
+data-files:
+  - image/*/*.com
+  - image/*/*.COM
+
 executables:
   test-bench-sim:
     source-dirs: test

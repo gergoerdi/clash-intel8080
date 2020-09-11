@@ -19,8 +19,11 @@ import Data.IORef
 import System.IO
 import System.Environment
 
+import Paths_intel8080
+
 runTest :: FilePath -> IO ()
 runTest romFile = banner romFile $ do
+    romFile <- getDataFileName romFile
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     (arr :: IOUArray Word16 Word8) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
@@ -51,7 +54,7 @@ main = do
     let images = if not (null args) then args else
             [ "image/testbench/TST8080.COM"
             , "image/testbench/8080PRE.COM"
-            , "image/testbench/CPUTEST.COM"
+            -- , "image/testbench/CPUTEST.COM"
               -- , "image/testbench/8080EXM.COM"
             ]
 
