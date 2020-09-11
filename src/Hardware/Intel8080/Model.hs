@@ -7,7 +7,7 @@ import Hardware.Intel8080.Decode
 import Hardware.Intel8080.Microcode
 import qualified Hardware.Intel8080.MicroCPU as MCPU
 
-import Clash.Prelude
+import Clash.Prelude hiding (lift)
 import Control.Monad.RWS
 import Control.Monad.Trans.Maybe
 import Data.Foldable (traverse_)
@@ -38,14 +38,14 @@ mkS = MkS{..}
     _ureg1 = 0
     _ureg2 = 0
 
-data R = MkR
-    { readMem :: Addr -> IO Value
-    , writeMem :: Addr -> Value -> IO ()
-    , inPort :: Port -> IO Value
-    , outPort :: Port -> Value -> IO Value
+data R m = MkR
+    { readMem :: Addr -> m Value
+    , writeMem :: Addr -> Value -> m ()
+    , inPort :: Port -> m Value
+    , outPort :: Port -> Value -> m Value
     }
 
-type CPU = MaybeT (RWST R () S IO)
+type CPU m = MaybeT (RWST (R m) () S m)
 
 instance MCPU.MicroState S where
     reg r = registers . lens (!! r) (\s v -> replace r v s)
@@ -54,12 +54,12 @@ instance MCPU.MicroState S where
     valueBuf = ureg1
     addrBuf = ureg2
 
-instance MCPU.MicroM S CPU where
+instance (Monad m) => MCPU.MicroM S (CPU m) where
     loadIn = return ()
     nextInstr = mzero
     allowInterrupts = assign allowInterrupts
 
-dumpState :: CPU ()
+dumpState :: (MonadIO m) => CPU m ()
 dumpState = do
     pc <- use pc
     sp <- use sp
@@ -68,55 +68,55 @@ dumpState = do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
 
-fetchByte :: CPU Value
+fetchByte :: (Monad m) => CPU m Value
 fetchByte = do
     pc <- use pc <* (pc += 1)
     peekByte pc
 
-peekByte :: Addr -> CPU Value
+peekByte :: (Monad m) => Addr -> CPU m Value
 peekByte addr = do
     readMem <- asks readMem
-    liftIO $ readMem addr
+    lift . lift $ readMem addr
 
-step :: CPU ()
+step :: (Monad m) => CPU m ()
 step = do
     instr <- decodeInstr <$> fetchByte
     exec instr
 
-interrupt :: Instr -> CPU ()
+interrupt :: (Monad m) => Instr -> CPU m ()
 interrupt instr = whenM (use allowInterrupts) $ do
     allowInterrupts .= False
     exec instr
 
-exec :: Instr -> CPU ()
+exec :: (Monad m) => Instr -> CPU m ()
 exec instr = do
     let (setup, uops) = microcode instr
     traverse_ (addressing . Left) setup
     -- liftIO $ print (instr, uops)
     mapM_ ustep uops
 
-addressing :: Either Addressing Addressing -> CPU ()
+addressing :: (Monad m) => Either Addressing Addressing -> CPU m ()
 addressing = either (doRead <=< MCPU.targetAddress) (doWrite <=< MCPU.targetAddress)
 
-doWrite :: Either Port Addr -> CPU ()
+doWrite :: (Monad m) => Either Port Addr -> CPU m ()
 doWrite target = either writePort poke target =<< use ureg1
   where
     writePort port value = do
         write <- asks outPort
-        liftIO $ void $ write port value
+        lift . lift $ void $ write port value
 
     poke addr value = do
         writeMem <- asks writeMem
-        liftIO $ writeMem addr value
+        lift . lift $ writeMem addr value
 
-doRead :: Either Port Addr -> CPU ()
+doRead :: (Monad m) => Either Port Addr -> CPU m ()
 doRead target = assign ureg1 =<< either readPort peekByte target
   where
     readPort port = do
         read <- asks inPort
-        liftIO $ read port
+        lift . lift $ read port
 
-ustep :: MicroOp -> CPU ()
+ustep :: (Monad m) => MicroOp -> CPU m ()
 ustep (effect, post) = do
     MCPU.uexec effect
     traverse_ addressing post
