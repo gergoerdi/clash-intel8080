@@ -19,9 +19,9 @@ import System.Terminal
 
 import Paths_intel8080
 
-waitKey :: (MonadInput m) => MaybeT m Value
+waitKey :: (MonadInput m, MonadPrinter m) => MaybeT m Value
 waitKey = do
-    ev <- lift awaitEvent
+    ev <- lift $ flush *> awaitEvent
     case ev of
         Left _ -> mzero
         Right (KeyEvent (CharKey c) mods) | mods == mempty -> return $ fromIntegral . ord $ c
