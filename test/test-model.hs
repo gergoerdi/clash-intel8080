@@ -1,5 +1,7 @@
+{-# LANGUAGE RecordWildCards #-}
+
 import Prelude ((^))
-import Clash.Prelude hiding ((^))
+import Clash.Prelude hiding ((^), lift)
 
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
@@ -15,7 +17,7 @@ import qualified Data.List as L
 import qualified Data.ByteString as BS
 
 import System.IO
-import Text.Printf
+import Data.Char (chr)
 
 import Paths_intel8080
 
@@ -25,19 +27,19 @@ runTest romFile = banner romFile $ do
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     (arr :: IOArray Addr Value) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
 
-    finished <- newIORef False
-    let inPort _ = return 0xff
-        outPort = outTestPort (writeIORef finished True)
+    let r = MkR{..}
+          where
+            readMem addr = liftIO $ readArray arr addr
+            writeMem addr val = liftIO $ writeArray arr addr val
 
-    let stepTB act = do
-            s <- get
-            let r = MkR (readArray arr) (writeArray arr) inPort outPort
-            (s, _) <- liftIO $ execRWST (runMaybeT act) r s
-            put s
-
-    let s = mkS{ _pc = 0x0100 }
-    flip execStateT s $ whileM_ (liftIO $ not <$> readIORef finished) $ do
-        stepTB step
+            inPort _ = return 0xff
+            outPort port value = do
+                case port of
+                    0x00 -> mzero
+                    0x01 -> liftIO $ putChar . chr  . fromIntegral $ value
+                return 0xff
+        s0 = mkS{ _pc = 0x0100 }
+    runMaybeT $ execRWST `flip` r `flip` s0 $ forever $ runMaybeT step
 
 main :: IO ()
 main = do
