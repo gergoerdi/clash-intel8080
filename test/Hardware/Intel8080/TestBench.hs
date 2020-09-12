@@ -14,8 +14,6 @@ import qualified Data.List as L
 import qualified Data.ByteString as BS
 import Text.Printf
 
-import Paths_intel8080
-
 -- TODO: Upgrade Clash so we have that...
 instance (KnownNat n) => Ix (Unsigned n) where
     range (a, b) = [a..b]
@@ -74,7 +72,6 @@ banner title act = do
 
 runTest :: (IOArray Addr Value -> IO a) -> FilePath -> IO a
 runTest body romFile = do
-    romFile <- getDataFileName romFile
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
     arr <- newListArray (minBound, maxBound) (fromIntegral <$> memL)

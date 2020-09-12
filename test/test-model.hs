@@ -15,8 +15,6 @@ import Data.Array.IO
 import System.IO
 import Data.Char (chr)
 
-import Paths_intel8080
-
 import Test.Tasty (defaultMain, TestTree, testGroup)
 import Test.Tasty.Golden (goldenVsString, findByExtension)
 import System.FilePath ((<.>))

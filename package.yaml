@@ -11,6 +11,7 @@ category:            Hardware
 extra-source-files:
   - LICENSE
   - README.md
+  - image/testbench/*.COM
 
 dependencies:
   - base >= 4.7 && < 5
@@ -80,8 +81,7 @@ library:
     - Hardware.Intel8080.Interruptor
 
 data-files:
-  - image/*/*.com
-  - image/*/*.COM
+  - image/tiny-basic/*.com
 
 tests:
   test-model:

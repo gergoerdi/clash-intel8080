@@ -23,8 +23,6 @@ import System.FilePath ((<.>))
 import Data.ByteString.Lazy.Builder
 import Data.ByteString.Lazy (ByteString)
 
-import Paths_intel8080
-
 run :: IOArray Addr Value -> IO ByteString
 run arr = do
     let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState{ _pc = 0x0100 }, Nothing))
