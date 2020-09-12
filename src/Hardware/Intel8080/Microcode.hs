@@ -8,7 +8,7 @@ import Clash.Prelude
 
 import Data.Singletons.TH hiding (NFDataX)
 import Hardware.Intel8080
-import Hardware.Intel8080.Star
+import Hardware.Intel8080.Amble
 
 $(singletons [d|
   data Addressing
@@ -71,7 +71,7 @@ data Target
     | PC
     deriving (Show, Generic, NFDataX)
 
-type MacroSteps ends n = Star ends n Effect
+type MacroSteps ends n = Amble ends n Effect
 
 imm1 = Step @(Just IncrPC) @Nothing ReadMem >:> End
 
