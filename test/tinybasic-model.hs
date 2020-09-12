@@ -5,8 +5,8 @@ import Hardware.Intel8080
 import Hardware.Intel8080.TestBench ()
 import Hardware.Intel8080.Model
 
-import Control.Monad.RWS
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Trans.Maybe
 import Data.Maybe
 import Data.Array.IO
@@ -56,7 +56,9 @@ main = do
             let c = chr . fromIntegral $ val
             case val of
                 0x0d -> putStringLn ""
-                _ | isPrint c -> putChar c
+                _ | isPrint c -> do
+                    putChar c
+                    when verbose $ putStringLn ""
                 _ -> return ()
             return 0x00
 
@@ -72,10 +74,7 @@ main = do
 
     withTerminal $ runTerminalT $ do
         let r = MkR (liftIO . readArray arr) (\addr x -> liftIO $ writeArray arr addr x) inPort outPort
-        let stepTB act = do
-                s <- get
-                (s, _) <- lift $ execRWST (runMaybeT act) r s
-                put s
+        let stepTB act = runReaderT `flip` r $ (runMaybeT $ unCPU act)
 
         let s = mkS{ _pc = 0x0100 }
         flip execStateT s $ forever $ stepTB step

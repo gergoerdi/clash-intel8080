@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DerivingStrategies #-}
 module Hardware.Intel8080.Model where
 
 import Hardware.Intel8080
@@ -8,7 +9,8 @@ import Hardware.Intel8080.Microcode
 import qualified Hardware.Intel8080.MicroCPU as MCPU
 
 import Clash.Prelude hiding (lift)
-import Control.Monad.RWS
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Data.Foldable (traverse_)
 import Control.Monad.Extra (whenM)
@@ -45,7 +47,13 @@ data R m = MkR
     , outPort :: Port -> Value -> m Value
     }
 
-type CPU m = MaybeT (RWST (R m) () S m)
+newtype CPU m a = CPU{ unCPU :: MaybeT (ReaderT (R m) (StateT S m)) a }
+    deriving newtype
+      (Functor, Applicative, Alternative, Monad, MonadFail,
+       MonadPlus, MonadReader (R m), MonadState S)
+
+instance MonadTrans CPU where
+    lift = CPU . lift . lift . lift
 
 instance MCPU.MicroState S where
     reg r = registers . lens (!! r) (\s v -> replace r v s)
@@ -64,7 +72,7 @@ dumpState = do
     pc <- use pc
     sp <- use sp
     [bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(rB, rC), (rD, rE), (rH, rL), (rA, rFlags)]
-    liftIO $ do
+    lift . liftIO $ do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
 
@@ -76,7 +84,7 @@ fetchByte = do
 peekByte :: (Monad m) => Addr -> CPU m Value
 peekByte addr = do
     readMem <- asks readMem
-    lift . lift $ readMem addr
+    lift $ readMem addr
 
 step :: (Monad m) => CPU m ()
 step = do
@@ -103,18 +111,18 @@ doWrite target = either writePort poke target =<< use ureg1
   where
     writePort port value = do
         write <- asks outPort
-        lift . lift $ void $ write port value
+        lift $ void $ write port value
 
     poke addr value = do
         writeMem <- asks writeMem
-        lift . lift $ writeMem addr value
+        lift $ writeMem addr value
 
 doRead :: (Monad m) => Either Port Addr -> CPU m ()
 doRead target = assign ureg1 =<< either readPort peekByte target
   where
     readPort port = do
         read <- asks inPort
-        lift . lift $ read port
+        lift $ read port
 
 ustep :: (Monad m) => MicroOp -> CPU m ()
 ustep (effect, post) = do
