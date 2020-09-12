@@ -73,7 +73,7 @@ banner title act = do
     return x
 
 runTest :: (IOArray Addr Value -> IO a) -> FilePath -> IO a
-runTest body romFile = banner romFile $ do
+runTest body romFile = do
     romFile <- getDataFileName romFile
     bs <- BS.unpack <$> BS.readFile romFile
     let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00

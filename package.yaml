@@ -83,15 +83,24 @@ data-files:
   - image/*/*.com
   - image/*/*.COM
 
-executables:
-  test-bench-model:
+tests:
+  test-model:
     source-dirs: test
     main: test-model.hs
+    dependencies:
+      - tasty
+      - tasty-golden
+      - filepath
 
-  test-bench-sim:
+  test-sim:
     source-dirs: test
     main: test-sim.hs
+    dependencies:
+      - tasty
+      - tasty-golden
+      - filepath
 
+executables:
   tinybasic-model:
     source-dirs: test
     main: tinybasic-model.hs

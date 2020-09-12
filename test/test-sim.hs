@@ -8,7 +8,8 @@ import Hardware.Intel8080.Sim
 import Clash.Prelude hiding (lift)
 
 import Control.Monad.State
-import Control.Lens hiding (Index)
+import Control.Monad.Writer
+import Control.Lens hiding (Index, (<.>))
 import Control.Monad.Trans.Maybe
 
 import Data.Array.IO
@@ -16,13 +17,19 @@ import System.IO
 import System.Environment
 import Data.Char (chr)
 
+import Test.Tasty (defaultMain, TestTree, testGroup)
+import Test.Tasty.Golden (goldenVsString, findByExtension)
+import System.FilePath ((<.>))
+import Data.ByteString.Lazy.Builder
+import Data.ByteString.Lazy (ByteString)
+
 import Paths_intel8080
 
-run :: IOArray Addr Value -> IO ()
+run :: IOArray Addr Value -> IO ByteString
 run arr = do
     let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState{ _pc = 0x0100 }, Nothing))
 
-    void $ runMaybeT $ runSim $ forever $ do
+    fmap toLazyByteString . execWriterT $ runMaybeT $ runSim $ forever $ do
         i <- use _1
         zoom _2 $ sim (mkWorld i)
         _1 += 1
@@ -38,8 +45,13 @@ run arr = do
         inPort port = Just <$> return 0xff
         outPort port value = do
             case port of
-                0x00 -> mzero
-                0x01 -> liftIO $ putChar . chr  . fromIntegral $ value
+                0x00 -> do
+                    liftIO $ putStrLn ""
+                    tell $ char7 '\n'
+                    mzero
+                0x01 -> do
+                    liftIO $ putChar . chr  . fromIntegral $ value
+                    tell $ word8 . fromIntegral $ value
             return $ Just 0xff
 
 
@@ -55,4 +67,12 @@ main = do
             -- , "image/testbench/8080EXM.COM"
             ]
 
-    mapM_ (runTest run) images
+    -- mapM_ (runTest run) images
+    defaultMain =<< goldenTests images
+
+goldenTests :: [FilePath] -> IO TestTree
+goldenTests images = do
+    return $ testGroup "Intel 8080 test benches running on model"
+      [ goldenVsString image (image <.> "out") (runTest run image)
+      | image <- images
+      ]
