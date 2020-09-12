@@ -1,50 +1,47 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, BangPatterns #-}
+
 import Hardware.Intel8080
 import Hardware.Intel8080.TestBench
 import Hardware.Intel8080.CPU
 import Hardware.Intel8080.Sim
 
-import Clash.Prelude hiding (lift, (^))
-import Prelude ((^))
+import Clash.Prelude hiding (lift)
 
 import Control.Monad.State
-import Control.Monad.Loops (whileM_)
 import Control.Lens hiding (Index)
+import Control.Monad.Trans.Maybe
 
-import qualified Data.ByteString as BS
-import qualified Data.List as L
-import Data.Word
 import Data.Array.IO
-import Data.IORef
 import System.IO
 import System.Environment
+import Data.Char (chr)
 
 import Paths_intel8080
 
-runTest :: FilePath -> IO ()
-runTest romFile = banner romFile $ do
-    romFile <- getDataFileName romFile
-    bs <- BS.unpack <$> BS.readFile romFile
-    let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
-    (arr :: IOUArray Word16 Word8) <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
-
-    finished <- newIORef False
-    let mkWorld i s = World{..}
-          where
-            readMem_ = fmap fromIntegral . readArray arr . fromIntegral
-            readMem addr = do
-                if i `elem` [0, 1, 2, 3, 7] then Just <$> readMem_ addr
-                  else return Nothing
-            writeMem addr = writeArray arr (fromIntegral addr) . fromIntegral
-            inPort r = Just <$> return 0xff
-            outPort r x = Just <$> outTestPort (writeIORef finished True) r x
-
+run :: IOArray Addr Value -> IO ()
+run arr = do
     let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState{ _pc = 0x0100 }, Nothing))
-    runSim $ whileM_ (liftIO $ not <$> readIORef finished) $ do
-    -- runSim $ replicateM_ 15 $ do
+
+    void $ runMaybeT $ runSim $ forever $ do
         i <- use _1
         zoom _2 $ sim (mkWorld i)
         _1 += 1
+  where
+    mkWorld !i s = World{..}
+      where
+        readMem addr = do
+            if i `elem` [0, 1, 2, 3, 7] then Just <$> readMem_ addr
+              else return Nothing
+        readMem_ = liftIO . readArray arr
+        writeMem addr = liftIO . writeArray arr addr
+
+        inPort port = Just <$> return 0xff
+        outPort port value = do
+            case port of
+                0x00 -> mzero
+                0x01 -> liftIO $ putChar . chr  . fromIntegral $ value
+            return $ Just 0xff
+
 
 main :: IO ()
 main = do
@@ -55,7 +52,7 @@ main = do
             [ "image/testbench/TST8080.COM"
             , "image/testbench/8080PRE.COM"
             -- , "image/testbench/CPUTEST.COM"
-              -- , "image/testbench/8080EXM.COM"
+            -- , "image/testbench/8080EXM.COM"
             ]
 
-    mapM_ runTest images
+    mapM_ (runTest run) images

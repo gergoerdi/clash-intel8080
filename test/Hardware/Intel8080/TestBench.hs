@@ -1,17 +1,20 @@
 module Hardware.Intel8080.TestBench where
 
-import Clash.Prelude
+import Clash.Prelude hiding ((^))
 import Hardware.Intel8080
 
-import Prelude (putChar)
+import Prelude (putChar, (^))
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Array
+import Data.Array.IO
 import Data.Char
 import Data.Word (Word8)
 import qualified Data.List as L
 import qualified Data.ByteString as BS
 import Text.Printf
+
+import Paths_intel8080
 
 -- TODO: Upgrade Clash so we have that...
 instance (KnownNat n) => Ix (Unsigned n) where
@@ -68,3 +71,12 @@ banner title act = do
     x <- act
     liftIO $ printf "\n%s--%s--%s\n" (L.replicate 10 '-') ('-' <$ title) (L.replicate 10 '-')
     return x
+
+runTest :: (IOArray Addr Value -> IO a) -> FilePath -> IO a
+runTest body romFile = banner romFile $ do
+    romFile <- getDataFileName romFile
+    bs <- BS.unpack <$> BS.readFile romFile
+    let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
+    arr <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
+
+    body arr
