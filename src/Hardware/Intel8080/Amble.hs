@@ -4,6 +4,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 {-# LANGUAGE UndecidableInstances, UndecidableSuperClasses #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- | A container for sequences where each step can have a pre- and a
 -- postamble. The postamble and the preamble of two neighbouring steps
@@ -42,7 +43,7 @@ data Step (pre :: a) (post :: b) t where
     Step :: Sing pre -> t -> Sing post -> Step pre post t
 deriving instance Functor (Step pre post)
 
-step :: (SingI pre, SingI post) => t -> Step pre post t
+step :: forall pre. (SingI pre) => forall t. t -> forall post. (SingI post) => Step pre post t
 step x = Step sing x sing
 
 data Ends a b
