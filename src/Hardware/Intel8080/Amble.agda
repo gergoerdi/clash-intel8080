@@ -1,6 +1,6 @@
 open import Data.Maybe
 open import Data.Nat
-open import Data.Nat.Properties using (+-identityʳ; +-comm)
+open import Data.Nat.Properties using (+-comm)
 open import Data.Vec
 open import Data.Product
 open import Data.Unit
@@ -47,7 +47,7 @@ appendP (nonEmpty a₀ bₙ) ends2 = consP bₙ ends2
 
 append : ∀ {n m ends1 ends2} {prf : appendP ends1 ends2} → Amble A n ends1 → Amble A m ends2 → Amble A (n + m) (appendE ends1 ends2)
 append empty ys = ys
-append {n = n} (nonEmpty a₀ xs xₙ bₙ) empty rewrite +-identityʳ n = nonEmpty a₀ xs xₙ bₙ
+append {n = n} (nonEmpty a₀ xs xₙ bₙ) empty = nonEmpty a₀ (xs ++ []) xₙ bₙ
 append {prf = prf} (nonEmpty a₀ xs xₙ bₙ) (nonEmpty aₙ ys yₘ bₘ) =
   nonEmpty a₀ (xs ++ [ xₙ , (to-witness-T (meet bₙ aₙ) prf) ] ++ ys) yₘ bₘ
 
