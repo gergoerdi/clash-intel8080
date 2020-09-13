@@ -1,5 +1,5 @@
 open import Data.Maybe
-open import Data.List
+open import Data.Vec
 open import Data.Product
 open import Data.Nat
 open import Data.Sum
@@ -29,11 +29,11 @@ module _ where
   ex1 : Step ℕ _ _
   ex1 = step (just preA) 11 nothing
 
-  ss1 : Amble ℕ _
+  ss1 : Amble ℕ 2 _
   ss1 =
     cons ex1 $
     cons ex2 $
     empty
 
-  ex3 : Maybe (Maybe Pre × List (ℕ × Maybe (Pre ⊎ Post)))
+  ex3 : Maybe (Maybe Pre) × Vec (ℕ × Maybe (Pre ⊎ Post)) 2
   ex3 = stepsOf ss1
