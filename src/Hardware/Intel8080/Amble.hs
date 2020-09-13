@@ -55,8 +55,8 @@ data Amble (n :: Nat) (ends :: Ends (Maybe a) (Maybe b)) t where
     More
         :: forall (a0 :: Maybe a) (bn :: Maybe b) n t.
           Sing a0
+        -> Vec n (t, Demote (Maybe (Either a b)))
         -> t
-        -> Vec n (Demote (Maybe (Either a b)), t)
         -> Sing bn
         -> Amble (1 + n) (NonEmpty a0 bn) t
 deriving instance Functor (Amble n end)
@@ -79,8 +79,8 @@ cons
     => Step a0 b1 t
     -> Amble n ends t
     -> Amble (1 + n) (ConsOf a0 b1 ends) t
-cons (Step a0 x b1) End = More a0 x Nil b1
-cons (Step a0 x b1) (More a1 x' xs bn) = More a0 x ((meetOf b1 a1, x') :> xs) bn
+cons (Step a0 x b1) End = More a0 Nil x b1
+cons (Step a0 x b1) (More a1 xs xn bn) = More a0 ((x, meetOf b1 a1) :> xs) xn bn
 
 infixr 5 >:>
 (>:>) = cons
@@ -103,8 +103,8 @@ instance (Meet bn an) => Append (NonEmpty a0 bn) (NonEmpty an bm) where
 
 append :: (Append ends1 ends2) => Amble n ends1 t -> Amble m ends2 t -> Amble (n + m) (AppendOf ends1 ends2) t
 append End ys = ys
-append (More a0 x xs bn) End = More a0 x xs bn
-append (More a0 x xs bn) (More an y ys bm) = More a0 x (xs ++ singleton (meetOf bn an, y) ++ ys) bm
+append (More a0 xs xn bn) End = More a0 xs xn bn
+append (More a0 xs xn bn) (More an ys ym bm) = More a0 (xs ++ singleton (xn, meetOf bn an) ++ ys) ym bm
 
 infixr 5 >++>
 (>++>) = append
@@ -115,8 +115,4 @@ stepsOf
     => Amble n ends t
     -> (Maybe (Demote a), Vec n (t, Maybe (Demote (Either a b))))
 stepsOf End = (Nothing, Nil)
-stepsOf (More a0 x xs bn) = (fromSing a0, go x xs)
-  where
-    go :: forall k. t -> Vec k (Maybe (Demote (Either a b)), t) -> Vec (1 + k) (t, Maybe (Demote (Either a b)))
-    go x Nil = singleton (x, Right <$> fromSing bn)
-    go x (Cons (ab, x') xs) = Cons (x, ab) (go x' xs)
+stepsOf (More a0 xs xn bn) = (fromSing a0, xs :< (xn, Right <$> fromSing bn))
