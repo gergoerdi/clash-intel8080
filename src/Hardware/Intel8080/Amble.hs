@@ -18,8 +18,6 @@ module Hardware.Intel8080.Amble
 import Prelude ()
 import Clash.Prelude
 import Data.Singletons
-import Data.Proxy
-import Data.Singletons.TH (singletons)
 import Data.Kind (Constraint)
 
 class (SingKind a, SingKind b, SingI (MeetOf post pre)) => Meet (post :: Maybe b) (pre :: Maybe a) where
@@ -37,7 +35,7 @@ instance (SingKind a, SingKind b, SingI pre) => Meet (Nothing :: Maybe b) (Just 
 meetOf :: forall a b (post :: Maybe b) (pre :: Maybe a). (Meet post pre) => Sing post -> Sing pre -> Demote (Maybe (Either a b))
 meetOf _ _ = demote @(MeetOf post pre)
 
-data Step (pre :: a) (post :: b) t where
+data Step (pre :: Maybe a) (post :: Maybe b) t where
     Step :: Sing pre -> t -> Sing post -> Step pre post t
 deriving instance Functor (Step pre post)
 
@@ -51,8 +49,8 @@ data Ends a b
 data Amble (n :: Nat) (ends :: Ends a b) t where
     End :: Amble 0 Empty t
     More
-        :: forall (a0 :: Maybe a) (bn :: Maybe b) n t.
-          Sing a0
+        :: forall (a0 :: Maybe a) (bn :: Maybe b) n t. ()
+        => Sing a0
         -> Vec n (t, Demote (Maybe (Either a b)))
         -> t
         -> Sing bn
@@ -79,7 +77,7 @@ infixr 5 >:>
 (>:>) = cons
 
 type family CanAppend (ends1 :: Ends a b) (ends2 :: Ends a b) :: Constraint where
-    CanAppend (NonEmpty a1 bn) (NonEmpty an bm) = Meet bn an
+    CanAppend (NonEmpty a1 bn) ends2 = CanCons bn ends2
     CanAppend ends1 ends2 = ()
 
 type family Append (ends1 :: Ends a b) (ends2 :: Ends a b) where
@@ -96,8 +94,7 @@ infixr 5 >++>
 (>++>) = append
 
 stepsOf
-    :: forall a b (ends :: Ends a b) n t.
-       (SingKind a, SingKind b)
+    :: forall a b (ends :: Ends a b) n t. (SingKind a, SingKind b)
     => Amble n ends t
     -> (Maybe (Demote a), Vec n (t, Maybe (Demote (Either a b))))
 stepsOf End = (Nothing, Nil)

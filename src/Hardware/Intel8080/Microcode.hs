@@ -296,13 +296,13 @@ microcode XCHG = mc $
     step @Nothing (Swap2 rHL) @Nothing >:>
     End
 microcode IN = mc $
-    step @(Just IncrPC) ReadMem           @Nothing >:>
+    imm1                                           >++>
     step @Nothing       (FromBuf AddrBuf) @Nothing >:>
     step @(Just 'Port)  ReadMem           @Nothing >:>
     step @Nothing       (Set rA)          @Nothing >:>
     End
 microcode OUT = mc $
-    step @(Just IncrPC) ReadMem           @Nothing      >:>
+    imm1                                                >++>
     step @Nothing       (FromBuf AddrBuf) @Nothing      >:>
     step @Nothing       (Get rA)          @(Just 'Port) >:>
     End
