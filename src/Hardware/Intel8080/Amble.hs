@@ -3,7 +3,6 @@
 {-# LANGUAGE StandaloneDeriving, DeriveFunctor #-}
 {-# LANGUAGE ConstraintKinds #-}
 
-{-# LANGUAGE UndecidableInstances, UndecidableSuperClasses #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- | A container for sequences where each step can have a pre- and a
@@ -47,9 +46,9 @@ step x = Step sing x sing
 
 data Ends a b
     = Empty
-    | NonEmpty a b
+    | NonEmpty (Maybe a) (Maybe b)
 
-data Amble (n :: Nat) (ends :: Ends (Maybe a) (Maybe b)) t where
+data Amble (n :: Nat) (ends :: Ends a b) t where
     End :: Amble 0 Empty t
     More
         :: forall (a0 :: Maybe a) (bn :: Maybe b) n t.
@@ -58,49 +57,37 @@ data Amble (n :: Nat) (ends :: Ends (Maybe a) (Maybe b)) t where
         -> t
         -> Sing bn
         -> Amble (1 + n) (NonEmpty a0 bn) t
-deriving instance Functor (Amble n end)
+deriving instance Functor (Amble n ends)
 
-type family HeadC (c :: a -> Constraint) (ends :: Ends a b) :: Constraint where
-    HeadC c Empty = ()
-    HeadC c (NonEmpty a b) = c a
+type family CanCons (b1 :: Maybe b) (ends :: Ends a b) :: Constraint where
+    CanCons b1 Empty = ()
+    CanCons b1 (NonEmpty a1 bn) = Meet b1 a1
 
-class (HeadC (Meet b1) ends) => Cons (a0 :: Maybe a) (b1 :: Maybe b) (ends :: Ends (Maybe a) (Maybe b)) where
-    type ConsOf a0 b1 ends :: Ends (Maybe a) (Maybe b)
-
-instance Cons a0 b1 Empty where
-    type ConsOf a0 b1 Empty = NonEmpty a0 b1
-
-instance (Meet b1 a1, SingI a1) => Cons a0 b1 (NonEmpty a1 bm) where
-    type ConsOf a0 b1 (NonEmpty a1 bm) = NonEmpty a0 bm
+type family Cons (a0 :: Maybe a) (b1 :: Maybe b) (ends :: Ends a b) where
+    Cons a0 b1 Empty = NonEmpty a0 b1
+    Cons a0 b1 (NonEmpty a1 bn) = NonEmpty a0 bn
 
 cons
-    :: forall a0 b1 ends n t. (Cons a0 b1 ends)
+    :: forall a0 b1 n ends t. (CanCons b1 ends)
     => Step a0 b1 t
     -> Amble n ends t
-    -> Amble (1 + n) (ConsOf a0 b1 ends) t
+    -> Amble (1 + n) (Cons a0 b1 ends) t
 cons (Step a0 x b1) End = More a0 Nil x b1
 cons (Step a0 x b1) (More a1 xs xn bn) = More a0 ((x, meetOf b1 a1) :> xs) xn bn
 
 infixr 5 >:>
 (>:>) = cons
 
-type family MidC (ends1 :: Ends a b) (c :: b -> a -> Constraint) (ends2 :: Ends a b) :: Constraint where
-    MidC (NonEmpty a1 bn) c (NonEmpty an bm) = c bn an
-    MidC _ c _ = ()
+type family CanAppend (ends1 :: Ends a b) (ends2 :: Ends a b) :: Constraint where
+    CanAppend (NonEmpty a1 bn) (NonEmpty an bm) = Meet bn an
+    CanAppend ends1 ends2 = ()
 
-class (MidC ends1 Meet ends2) => Append (ends1 :: Ends (Maybe a) (Maybe b)) (ends2 :: Ends (Maybe a) (Maybe b)) where
-    type AppendOf ends1 ends2 :: Ends (Maybe a) (Maybe b)
+type family Append (ends1 :: Ends a b) (ends2 :: Ends a b) where
+    Append Empty ends2 = ends2
+    Append ends1 Empty = ends1
+    Append (NonEmpty a0 bn) (NonEmpty an bm) = NonEmpty a0 bm
 
-instance Append Empty ends2 where
-    type AppendOf Empty ends2 = ends2
-
-instance Append ends1 Empty where
-    type AppendOf ends1 Empty = ends1
-
-instance (Meet bn an) => Append (NonEmpty a0 bn) (NonEmpty an bm) where
-    type AppendOf (NonEmpty a0 bn) (NonEmpty an bm) = NonEmpty a0 bm
-
-append :: (Append ends1 ends2) => Amble n ends1 t -> Amble m ends2 t -> Amble (n + m) (AppendOf ends1 ends2) t
+append :: (CanAppend ends1 ends2) => Amble n ends1 t -> Amble m ends2 t -> Amble (n + m) (Append ends1 ends2) t
 append End ys = ys
 append (More a0 xs xn bn) End = More a0 xs xn bn
 append (More a0 xs xn bn) (More an ys ym bm) = More a0 (xs ++ singleton (xn, meetOf bn an) ++ ys) ym bm
@@ -109,7 +96,7 @@ infixr 5 >++>
 (>++>) = append
 
 stepsOf
-    :: forall a b (ends :: Ends (Maybe a) (Maybe b)) n t.
+    :: forall a b (ends :: Ends a b) n t.
        (SingKind a, SingKind b)
     => Amble n ends t
     -> (Maybe (Demote a), Vec n (t, Maybe (Demote (Either a b))))
