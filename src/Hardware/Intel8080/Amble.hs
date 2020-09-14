@@ -25,19 +25,18 @@ import Data.Kind (Constraint)
 
 class (SingKind a, SingKind b, SingI (MeetOf post pre)) => Meet (post :: Maybe b) (pre :: Maybe a) where
     type MeetOf post pre :: Maybe (Either a b)
-    meetOf :: Sing post -> Sing pre -> Demote (Maybe (Either a b)) -- MeetOf post pre)
 
 instance (SingKind a, SingKind b) => Meet (Nothing :: Maybe b) (Nothing :: Maybe a) where
     type MeetOf Nothing Nothing = Nothing
-    meetOf _ _ = Nothing
 
 instance (SingKind a, SingKind b, SingI post) => Meet (Just post :: Maybe b) (Nothing :: Maybe a) where
     type MeetOf (Just post) Nothing = Just (Right post)
-    meetOf post _ = Right <$> fromSing post
 
 instance (SingKind a, SingKind b, SingI pre) => Meet (Nothing :: Maybe b) (Just pre :: Maybe a) where
     type MeetOf Nothing (Just pre) = Just (Left pre)
-    meetOf _ pre = Left <$> fromSing pre
+
+meetOf :: forall a b (post :: Maybe b) (pre :: Maybe a). (Meet post pre) => Sing post -> Sing pre -> Demote (Maybe (Either a b))
+meetOf _ _ = demote @(MeetOf post pre)
 
 data Step (pre :: a) (post :: b) t where
     Step :: Sing pre -> t -> Sing post -> Step pre post t
