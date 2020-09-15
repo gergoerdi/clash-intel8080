@@ -3,7 +3,8 @@
 {-# LANGUAGE StandaloneDeriving, DeriveFunctor #-}
 {-# LANGUAGE ConstraintKinds #-}
 
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes #-} -- Needed for `step` only
+{-# LANGUAGE UndecidableInstances #-} -- Needed for the `TypeError` instance of `Meet` only
 
 -- | A container for sequences where each step can have a pre- and a
 -- postamble. The postamble and the preamble of two neighbouring steps
@@ -23,6 +24,10 @@ import Data.Kind (Constraint)
 class (SingKind a, SingKind b, SingI (MeetOf post pre)) => Meet (post :: Maybe b) (pre :: Maybe a) where
     type MeetOf post pre :: Maybe (Either a b)
 
+type ConflictErr post pre =
+    Text "Conflict between postamble " :<>: ShowType post :<>:
+    Text " and next preamble " :<>: ShowType pre
+
 instance (SingKind a, SingKind b) => Meet (Nothing :: Maybe b) (Nothing :: Maybe a) where
     type MeetOf Nothing Nothing = Nothing
 
@@ -31,6 +36,9 @@ instance (SingKind a, SingKind b, SingI post) => Meet (Just post :: Maybe b) (No
 
 instance (SingKind a, SingKind b, SingI pre) => Meet (Nothing :: Maybe b) (Just pre :: Maybe a) where
     type MeetOf Nothing (Just pre) = Just (Left pre)
+
+instance (TypeError (ConflictErr post pre), SingKind a, SingKind b) => Meet (Just post :: Maybe b) (Just pre :: Maybe a) where
+    type MeetOf (Just post) (Just pre) = Nothing
 
 meetOf :: forall a b (post :: Maybe b) (pre :: Maybe a). (Meet post pre) => Sing post -> Sing pre -> Demote (Maybe (Either a b))
 meetOf _ _ = demote @(MeetOf post pre)
