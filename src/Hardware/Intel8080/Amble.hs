@@ -1,7 +1,5 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, ConstraintKinds #-}
 {-# LANGUAGE StandaloneDeriving, DeriveFunctor #-}
-{-# LANGUAGE ConstraintKinds #-}
 
 {-# LANGUAGE RankNTypes #-} -- Needed for `step` only
 {-# LANGUAGE UndecidableInstances #-} -- Needed for the `TypeError` instance of `Meet` only
