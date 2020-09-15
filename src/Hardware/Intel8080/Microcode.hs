@@ -112,7 +112,7 @@ type Microcode = (Maybe Addressing, Vec MicroLen MicroOp)
 
 mc :: (KnownNat m, (n + m) ~ MicroLen) => MacroSteps n _ -> Microcode
 mc ops = let (first, ops') = stepsOf ops
-         in (first, ops' ++ pure (When Nothing, Nothing))
+         in (first, ops' ++ repeat (When Nothing, Nothing))
 
 evalSrc src k = case src of
     Imm -> mc $ imm1 >++> k
