@@ -31,10 +31,11 @@ type family Meet (post :: Maybe b) (pre :: Maybe a) :: Maybe (Either a b) where
     Meet Nothing (Just pre) = Just (Left pre)
     Meet (Just post) (Just pre) = TypeError (ConflictErr post pre)
 
-meetOf :: forall a b (post :: Maybe b) (pre :: Maybe a).
-          (SingKind a, SingKind b, SingI (Meet post pre))
-       => Sing post -> Sing pre -> Demote (Maybe (Either a b))
-meetOf _ _ = demote @(Meet post pre)
+meet
+    :: forall a b (post :: Maybe b) (pre :: Maybe a).
+       (SingKind a, SingKind b, SingI (Meet post pre))
+    => Sing post -> Sing pre -> Demote (KindOf (Meet post pre))
+meet _ _ = demote @(Meet post pre)
 
 data Step (pre :: Maybe a) (post :: Maybe b) t where
     Step :: Sing pre -> t -> Sing post -> Step pre post t
@@ -72,7 +73,7 @@ cons
     -> Amble n ends t
     -> Amble (1 + n) (Cons a0 b1 ends) t
 cons (Step a0 x b1) End = More a0 Nil x b1
-cons (Step a0 x b1) (More a1 xs xn bn) = More a0 ((x, meetOf b1 a1) :> xs) xn bn
+cons (Step a0 x b1) (More a1 xs xn bn) = More a0 ((x, meet b1 a1) :> xs) xn bn
 
 infixr 5 >:>
 (>:>) = cons
@@ -89,7 +90,7 @@ type family Append (ends1 :: Ends a b) (ends2 :: Ends a b) where
 append :: (CanAppend ends1 ends2) => Amble n ends1 t -> Amble m ends2 t -> Amble (n + m) (Append ends1 ends2) t
 append End ys = ys
 append (More a0 xs xn bn) End = More a0 xs xn bn
-append (More a0 xs xn bn) (More an ys ym bm) = More a0 (xs ++ singleton (xn, meetOf bn an) ++ ys) ym bm
+append (More a0 xs xn bn) (More an ys ym bm) = More a0 (xs ++ singleton (xn, meet bn an) ++ ys) ym bm
 
 infixr 5 >++>
 (>++>) = append
