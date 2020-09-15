@@ -61,20 +61,22 @@ type family CanCons (b1 :: Maybe b) (ends :: Ends a b) :: Constraint where
     CanCons b1 Empty = ()
     CanCons (b1 :: Maybe b) (NonEmpty a1 bn :: Ends a b) = (SingKind a, SingKind b, SingI (Combine b1 a1))
 
-type family Cons (a0 :: Maybe a) (b1 :: Maybe b) (ends :: Ends a b) where
-    Cons a0 b1 Empty = NonEmpty a0 b1
-    Cons a0 b1 (NonEmpty a1 bn) = NonEmpty a0 bn
+type family Cons (b1 :: Maybe b) (ends :: Ends a b) where
+    Cons b1 Empty = b1
+    Cons b1 (NonEmpty a1 bn) = bn
 
 cons
-    :: forall a0 b1 n ends t. (CanCons b1 ends)
+    :: forall (a0 :: Maybe a) b1 n (ends :: Ends a b) t. (CanCons b1 ends)
     => Step a0 b1 t
     -> Amble n ends t
-    -> Amble (1 + n) (Cons a0 b1 ends) t
+    -> Amble (1 + n) (NonEmpty a0 (Cons b1 ends)) t
 cons (Step a0 x b1) End = More a0 Nil x b1
 cons (Step a0 x b1) (More a1 xs xn bn) = More a0 ((x, combine b1 a1) :> xs) xn bn
 
 infixr 5 >:>
-(>:>) :: forall a0 b1 n ends t. (CanCons b1 ends) => Step a0 b1 t -> Amble n ends t -> Amble (1 + n) (Cons a0 b1 ends) t
+(>:>)
+    :: forall (a0 :: Maybe a) b1 n (ends :: Ends a b) t. (CanCons b1 ends)
+    => Step a0 b1 t -> Amble n ends t -> Amble (1 + n) (NonEmpty a0 (Cons b1 ends)) t
 (>:>) = cons
 
 type family CanAppend (ends1 :: Ends a b) (ends2 :: Ends a b) :: Constraint where
