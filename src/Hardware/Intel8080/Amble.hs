@@ -21,27 +21,20 @@ import Clash.Prelude
 import Data.Singletons
 import Data.Kind (Constraint)
 
-class (SingKind a, SingKind b, SingI (MeetOf post pre)) => Meet (post :: Maybe b) (pre :: Maybe a) where
-    type MeetOf post pre :: Maybe (Either a b)
-
 type ConflictErr post pre =
-    Text "Conflict between postamble " :<>: ShowType post :<>:
-    Text " and next preamble " :<>: ShowType pre
+    Text "Conflict between postamble" :$$: Text "  " :<>: ShowType post :$$:
+    Text "and next preamble" :$$: Text "  " :<>: ShowType pre
 
-instance (SingKind a, SingKind b) => Meet (Nothing :: Maybe b) (Nothing :: Maybe a) where
-    type MeetOf Nothing Nothing = Nothing
+type family Meet (post :: Maybe b) (pre :: Maybe a) :: Maybe (Either a b) where
+    Meet Nothing Nothing = Nothing
+    Meet (Just post) Nothing = Just (Right post)
+    Meet Nothing (Just pre) = Just (Left pre)
+    Meet (Just post) (Just pre) = TypeError (ConflictErr post pre)
 
-instance (SingKind a, SingKind b, SingI post) => Meet (Just post :: Maybe b) (Nothing :: Maybe a) where
-    type MeetOf (Just post) Nothing = Just (Right post)
-
-instance (SingKind a, SingKind b, SingI pre) => Meet (Nothing :: Maybe b) (Just pre :: Maybe a) where
-    type MeetOf Nothing (Just pre) = Just (Left pre)
-
-instance (TypeError (ConflictErr post pre), SingKind a, SingKind b) => Meet (Just post :: Maybe b) (Just pre :: Maybe a) where
-    type MeetOf (Just post) (Just pre) = Nothing
-
-meetOf :: forall a b (post :: Maybe b) (pre :: Maybe a). (Meet post pre) => Sing post -> Sing pre -> Demote (Maybe (Either a b))
-meetOf _ _ = demote @(MeetOf post pre)
+meetOf :: forall a b (post :: Maybe b) (pre :: Maybe a).
+          (SingKind a, SingKind b, SingI (Meet post pre))
+       => Sing post -> Sing pre -> Demote (Maybe (Either a b))
+meetOf _ _ = demote @(Meet post pre)
 
 data Step (pre :: Maybe a) (post :: Maybe b) t where
     Step :: Sing pre -> t -> Sing post -> Step pre post t
@@ -67,7 +60,7 @@ deriving instance Functor (Amble n ends)
 
 type family CanCons (b1 :: Maybe b) (ends :: Ends a b) :: Constraint where
     CanCons b1 Empty = ()
-    CanCons b1 (NonEmpty a1 bn) = Meet b1 a1
+    CanCons (b1 :: Maybe b) (NonEmpty a1 bn :: Ends a b) = (SingKind a, SingKind b, SingI (Meet b1 a1))
 
 type family Cons (a0 :: Maybe a) (b1 :: Maybe b) (ends :: Ends a b) where
     Cons a0 b1 Empty = NonEmpty a0 b1
