@@ -110,7 +110,7 @@ type MicroOp = (Effect, RW)
 type MicroLen = 10
 type Microcode = (Maybe Addressing, Vec MicroLen MicroOp)
 
-mc :: (KnownNat m, (n + m) ~ MicroLen) => MacroSteps n _ -> Microcode
+mc :: (KnownNat m, (n + m) ~ MicroLen) => MacroSteps n (ends :: Ends Addressing Addressing) -> Microcode
 mc ops = let (first, ops') = stepsOf ops
          in (first, ops' ++ repeat (When Nothing, Nothing))
 

@@ -10,7 +10,7 @@
 module Hardware.Intel8080.Amble
        ( Step(..)
        , step
-       , Amble(End), (>:>), (>++>)
+       , Ends(..), Amble(End), (>:>), (>++>)
        , stepsOf
        ) where
 
