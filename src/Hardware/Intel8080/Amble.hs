@@ -74,6 +74,7 @@ cons (Step a0 x b1) End = More a0 Nil x b1
 cons (Step a0 x b1) (More a1 xs xn bn) = More a0 ((x, meet b1 a1) :> xs) xn bn
 
 infixr 5 >:>
+(>:>) :: forall a0 b1 n ends t. (CanCons b1 ends) => Step a0 b1 t -> Amble n ends t -> Amble (1 + n) (Cons a0 b1 ends) t
 (>:>) = cons
 
 type family CanAppend (ends1 :: Ends a b) (ends2 :: Ends a b) :: Constraint where
@@ -91,6 +92,7 @@ append (More a0 xs xn bn) End = More a0 xs xn bn
 append (More a0 xs xn bn) (More an ys ym bm) = More a0 (xs ++ singleton (xn, meet bn an) ++ ys) ym bm
 
 infixr 5 >++>
+(>++>) :: (CanAppend ends1 ends2) => Amble n ends1 t -> Amble m ends2 t -> Amble (n + m) (Append ends1 ends2) t
 (>++>) = append
 
 stepsOf
