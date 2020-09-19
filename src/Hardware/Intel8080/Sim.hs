@@ -32,26 +32,30 @@ initInput = CPUIn
 
 world :: (Monad m) => World m -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
 world World{..} CPUOut{..} = do
-    dataIn <- read
-    unless _portSelect $ lift $ traverse_ (writeMem _addrOut) _dataOut
+    dataIn <- case _addrOut of
+        Left port ->
+            lift $ maybe (inPort port) (outPort port) _dataOut
+        Right addr | _interruptAck ->
+            getInterrupt
+        Right addr -> do
+            x <- lift $ readMem addr
+            lift $ traverse_ (writeMem addr) _dataOut
+            return x
+    interruptRequest <- newInterrupt
 
-    interruptRequest <- get >>= \case
+    return CPUIn{..}
+  where
+    getInterrupt = get >>= \case
+        Just (QueuedIRQ op) -> do
+            put Nothing
+            return $ Just op
+        _ -> return $ Just 0x00
+
+    newInterrupt = get >>= \case
         Just (NewIRQ op) -> do
             put $ Just $ QueuedIRQ op
             return True
         _ -> return False
-
-    return CPUIn{..}
-  where
-    read | _portSelect = lift $ maybe (inPort port) (outPort port) _dataOut
-         | _interruptAck = get >>= \case
-            Just (QueuedIRQ op) -> do
-                put Nothing
-                return $ Just op
-            _ -> return $ Just 0x00
-         | otherwise = lift $ readMem _addrOut
-
-    port = truncateB _addrOut
 
 sim :: (Monad m) => (CPUState -> World m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m ()
 sim mkWorld = do

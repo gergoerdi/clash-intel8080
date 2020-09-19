@@ -71,9 +71,8 @@ initState = CPUState
 
 declareBareB [d|
   data CPUOut = CPUOut
-      { _addrOut :: Addr
+      { _addrOut :: Either Port Addr
       , _dataOut :: Maybe Value
-      , _portSelect :: Bool
       , _interruptAck :: Bool
       } |]
 makeLenses ''CPUOut
@@ -81,9 +80,8 @@ makeLenses ''CPUOut
 defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{..} = CPUOut{..}
   where
-    _addrOut = fromMaybe _addrBuf _addrLatch
+    _addrOut = Right $ fromMaybe _addrBuf _addrLatch
     _dataOut = Nothing
-    _portSelect = False
     _interruptAck = False
 
 type M = MaybeT (CPUM CPUState CPUOut)
@@ -213,20 +211,18 @@ addressing = either (doRead <=< MCPU.targetAddress) (doWrite <=< MCPU.targetAddr
 
 doWrite :: Either Port Addr -> M ()
 doWrite target = do
-    either tellPort (addrOut .:=) target
+    addrOut .:= target
     value <- use valueBuf
     dataOut .:= Just value
 
 doRead :: Either Port Addr -> M ()
-doRead target = do
-    either tellPort latchAddr target
+doRead target = either tellPort latchAddr target
 
 tellPort :: Value -> M ()
 tellPort port = do
-    portSelect .:= True
-    addrOut .:= bitCoerce (port, port)
+    addrOut .:= Left port
 
 latchAddr :: Addr -> M ()
 latchAddr addr = do
     addrLatch .= Just addr
-    addrOut .:= addr
+    addrOut .:= Right addr
