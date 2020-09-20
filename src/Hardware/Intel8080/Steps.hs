@@ -25,37 +25,32 @@ data Step b1 a b2 pre post where
     Step :: IMaybe pre b1 -> a -> IMaybe post b2 -> Step b1 a b2 pre post
 
 data Steps b1 a b2 (n :: Nat) pre post where
-    Pure :: Step b1 a b2 pre post -> Steps b1 a b2 1 pre post
-    Cat
-        :: (Compat post1 pre2)
-        => Steps b1 a b2 (1 + n)         pre1 post1
-        -> Steps b1 a b2 (1 + k)         pre2 post2
-        -> Steps b1 a b2 (1 + n + 1 + k) pre1 post2
+    One :: Step b1 a b2 pre post -> Steps b1 a b2 1 pre post
+    More :: (Compat post1 pre2) => Step b1 a b2 pre1 post1 -> Steps b1 a b2 n pre2 post2 -> Steps b1 a b2 (1 + n) pre1 post2
 
 step :: IMaybe pre b1 -> a -> IMaybe post b2 -> Steps b1 a b2 1 pre post
-step pre x post = Pure $ Step pre x post
+step pre x post = One $ Step pre x post
 
 infixr 5 >++>
 (>++>)
     :: (Compat post1 pre2)
-    => Steps b1 a b2 (1 + n) pre1 post1
-    -> Steps b1 a b2 (1 + k) pre2 post2
-    -> Steps b1 a b2 (1 + n + 1 + k) pre1 post2
-(>++>) = Cat
+    => Steps b1 a b2 n pre1 post1
+    -> Steps b1 a b2 k pre2 post2
+    -> Steps b1 a b2 (n + k) pre1 post2
+One x >++> ys = More x ys
+More x xs >++> ys = More x $ xs >++> ys
 
 deriving instance (Show a, Show b1, Show b2) => Show (Step b1 a b2 pre post)
 instance (Show a, Show b1, Show b2) => Show (Steps b1 a b2 pre n post) where
-   show (Pure p)  = show p <> "\n"
-   show (Cat a b) = show a <> show b
+   show (One p)  = show p <> "\n"
+   show (More a b) = show a <> show b
 
-stepsOf :: Steps b1 a b2 (1 + n) pre post -> (Maybe b1, Vec (1 + n) (a, Maybe (Either b2 b1)))
-stepsOf ss = case flatten ss of
-    (a0, xbs, xn, bn) -> (from a0, xbs :< (xn, Left <$> from bn))
+stepsOf :: Steps b1 a b2 n pre post -> (Maybe b1, Vec n (a, Maybe (Either b2 b1)))
+stepsOf xs = case go xs of (pre, ys) -> (from pre, ys)
   where
-    flatten :: Steps b1 a b2 (1 + n) pre post -> (IMaybe pre b1, Vec n (a, Maybe (Either b2 b1)), a, IMaybe post b2)
-    flatten (Pure (Step pre x post)) = (pre, Nil, x, post)
-    flatten (Cat s1 s2) = case (flatten s1, flatten s2) of
-        ((a0, xbs, xn, bn), (an, ybs, ym, bm)) -> (a0, xbs ++ singleton (xn, combine bn an) ++ ybs, ym, bm)
+    go :: Steps b1 a b2 n pre post -> (IMaybe pre b1, Vec n (a, Maybe (Either b2 b1)))
+    go (One (Step pre x post)) = (pre, singleton (x, Left <$> from post))
+    go (More (Step pre x post) xs) = case go xs of (pre', ys) -> (pre, (x, combine post pre') :> ys)
 
     combine :: (Compat post1 pre2) => IMaybe post1 b2 -> IMaybe pre2 b1 -> Maybe (Either b2 b1)
     combine INothing post = Right <$> from post
