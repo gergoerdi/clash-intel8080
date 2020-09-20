@@ -187,7 +187,7 @@ cpu inp@CPUIn{..} = do
             instr <- {- traceState $ -} decodeInstr <$> if interrupting then readByte inp else fetch inp
             instrBuf .= instr
             let (setup, _) = microcode instr
-            traverse_ (addressing . Left) setup
+            traverse_ (addressing . Right) setup
             phase .= Executing 0
         Executing i -> do
             instr <- use instrBuf
@@ -207,7 +207,7 @@ nextInstr = do
     phase .= Fetching False
 
 addressing :: Either Addressing Addressing -> M ()
-addressing = either (doRead <=< MCPU.targetAddress) (doWrite <=< MCPU.targetAddress)
+addressing = either (doWrite <=< MCPU.targetAddress) (doRead <=< MCPU.targetAddress)
 
 doWrite :: Either Port Addr -> M ()
 doWrite target = do
