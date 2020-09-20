@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs, StandaloneDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses, UndecidableInstances #-} -- Needed for `TypeError` only
 
 -- | A container for sequences where each step can have a pre- and a
 -- postamble. The postamble and the preamble of two neighbouring steps
@@ -13,7 +14,12 @@ data IMaybe (isJust :: Bool) a where
     IJust :: a -> IMaybe True a
 deriving instance (Show a) => Show (IMaybe isJust a)
 
-type Compat post1 pre2 = (post1 && pre2) ~ False
+class Impossible where
+    impossible :: a
+
+type family Compat post1 pre2 where
+    Compat True True = (TypeError (Text "Conflict between postamble and next preamble"), Impossible)
+    Compat post1 pre2 = ()
 
 data Step b1 a b2 pre post where
     Step :: IMaybe pre b1 -> a -> IMaybe post b2 -> Step b1 a b2 pre post
@@ -54,6 +60,7 @@ stepsOf ss = case flatten ss of
     combine :: (Compat post1 pre2) => IMaybe post1 b2 -> IMaybe pre2 b1 -> Maybe (Either b2 b1)
     combine INothing post = Right <$> from post
     combine pre INothing = Left <$> from pre
+    combine IJust{} IJust{} = impossible
 
     from :: IMaybe free m -> Maybe m
     from INothing = Nothing
