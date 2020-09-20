@@ -99,12 +99,12 @@ interrupt instr = whenM (use allowInterrupts) $ do
 exec :: (Monad m) => Instr -> CPU m ()
 exec instr = do
     let (setup, uops) = microcode instr
-    traverse_ (addressing . Left) setup
+    traverse_ (addressing . Right) setup
     -- liftIO $ print (instr, uops)
     mapM_ ustep uops
 
 addressing :: (Monad m) => Either Addressing Addressing -> CPU m ()
-addressing = either (doRead <=< MCPU.targetAddress) (doWrite <=< MCPU.targetAddress)
+addressing = either (doWrite <=< MCPU.targetAddress) (doRead <=< MCPU.targetAddress)
 
 doWrite :: (Monad m) => Either Port Addr -> CPU m ()
 doWrite target = either writePort poke target =<< use ureg1
