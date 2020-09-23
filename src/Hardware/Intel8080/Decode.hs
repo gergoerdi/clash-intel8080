@@ -16,19 +16,19 @@ decodeCond cond = Cond flag b
   where
     (flag0, b) = unpack (pack cond) :: (Unsigned 2, Bool)
     flag = case flag0 of
-        0b00 -> fZ
-        0b01 -> fC
-        0b10 -> fP
-        0b11 -> fS
+        0b00 -> FZ
+        0b01 -> FC
+        0b10 -> FP
+        0b11 -> FS
 
 decodeRP :: Bit -> Bit -> RegPair
-decodeRP 0 0 = Regs rB rC
-decodeRP 0 1 = Regs rD rE
-decodeRP 1 0 = Regs rH rL
+decodeRP 0 0 = RBC
+decodeRP 0 1 = RDE
+decodeRP 1 0 = RHL
 decodeRP 1 1 = SP
 
 decodeRPPP :: Bit -> Bit -> RegPair
-decodeRPPP 1 1 = Regs rA rFlags
+decodeRPPP 1 1 = RAF
 decodeRPPP r p = decodeRP r p
 
 decodeInstr :: Unsigned 8 -> Instr

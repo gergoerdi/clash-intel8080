@@ -71,7 +71,7 @@ dumpState :: (MonadIO m) => CPU m ()
 dumpState = do
     pc <- use pc
     sp <- use sp
-    [bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(rB, rC), (rD, rE), (rH, rL), (rA, rFlags)]
+    [bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
     lift . liftIO $ do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af

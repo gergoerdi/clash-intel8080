@@ -43,7 +43,7 @@ bitL :: (BitPack a, Enum i) => i -> Lens' a Bit
 bitL i = lens (!i) (flip $ replaceBit i)
 
 flag :: (MicroState s) => Flag -> Lens' s Bool
-flag fl = reg rFlags . bitL fl . iso bitToBool boolToBit
+flag fl = reg RFlags . bitL fl . iso bitToBool boolToBit
 
 evalCond :: (MicroM s m) => Cond -> m Bool
 evalCond (Cond f target) = uses (flag f) (== target)
@@ -80,26 +80,26 @@ uexec ReadMem = loadIn
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed nextInstr
-uexec (Compute arg fun updateC updateA) = do
-    c <- use (flag fC)
+uexec (Compute arg fun updateC updateAC) = do
+    c <- use (flag FC)
     x <- case arg of
-        RegA -> use (reg rA)
+        RegA -> use (reg RA)
         Const01 -> pure 0x01
         ConstFF -> pure 0xff
     y <- use valueBuf
-    let (a', c', result) = alu fun c x y
-    when (updateC == SetC) $ flag fC .= c'
-    when (updateA == SetA) $ flag fA .= a'
+    let (ac', c', result) = alu fun c x y
+    when (updateAC == SetAC) $ flag FAC .= ac'
+    when (updateC == SetC) $ flag FC .= c'
     valueBuf .= result
 uexec (Compute2 fun2 updateC) = do
     arg <- case fun2 of
         Inc2 -> return 0x0001
         Dec2 -> return 0xffff
-        AddHL -> use (regPair rHL)
+        AddHL -> use (regPair RHL)
     x <- use addrBuf
     let (c', x') = bitCoerce $ x `add` arg
     addrBuf .= x'
-    when (updateC == SetC) $ flag fC .= c'
+    when (updateC == SetC) $ flag FC .= c'
 uexec (Compute0 fl fun0) = do
     flag fl %= case fun0 of
         ConstTrue0 -> const True
@@ -108,24 +108,24 @@ uexec (Rst rst) = pc .= fromIntegral rst `shiftL` 3
 uexec (SetInt b) = allowInterrupts b
 uexec UpdateFlags = do
     x <- use valueBuf
-    flag fZ .= (x == 0)
-    flag fS .= x `testBit` 7
-    flag fP .= even (popCount x)
+    flag FZ .= (x == 0)
+    flag FS .= x `testBit` 7
+    flag FP .= even (popCount x)
 uexec FixupBCD = do
-    a <- use (flag fA)
-    c <- use (flag fC)
+    c <- use (flag FC)
+    ac <- use (flag FAC)
 
     x <- use valueBuf
-    (a, x) <- return $
+    (ac, x) <- return $
         let (_, x0) = bitCoerce x :: (Unsigned 4, Unsigned 4)
-        in if x0 > 9 || a then bitCoerce $ x `add` (0x06 :: Value) else (False, x)
+        in if x0 > 9 || ac then bitCoerce $ x `add` (0x06 :: Value) else (False, x)
 
     (c, x) <- return $
         let (x1, _) = bitCoerce x :: (Unsigned 4, Unsigned 4)
         in if x1 > 9 || c then bitCoerce $ x `add` (0x60 :: Value) else (False, x)
 
-    flag fA .= a
-    flag fC .= c
+    flag FC .= c
+    flag FAC .= ac
     valueBuf .= x
 
 twist :: Addr -> (Value, Addr)

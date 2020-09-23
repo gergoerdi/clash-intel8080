@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 module Hardware.Intel8080 where
 
 import Prelude ()
@@ -7,32 +8,33 @@ import Clash.Prelude
 type NumRegs = 8
 type Reg = Index NumRegs
 
-rA, rFlags, rB, rC, rD, rE, rH, rL :: Reg
-rA = 7
-rFlags = 6
-rB = 0
-rC = 1
-rD = 2
-rE = 3
-rH = 4
-rL = 5
+pattern RA, RFlags, RB, RC, RD, RE, RH, RL :: Reg
+pattern RA = 7
+pattern RFlags = 6
+pattern RB = 0
+pattern RC = 1
+pattern RD = 2
+pattern RE = 3
+pattern RH = 4
+pattern RL = 5
 
 data RegPair = Regs Reg Reg | SP
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
-rBC, rDE, rHL :: RegPair
-rBC = Regs rB rC
-rDE = Regs rD rE
-rHL = Regs rH rL
+pattern RAF, RBC, RDE, RHL :: RegPair
+pattern RAF = Regs RA RFlags
+pattern RBC = Regs RB RC
+pattern RDE = Regs RD RE
+pattern RHL = Regs RH RL
 
 type Flag = Index 8
 
-fS, fZ, fA, fP, fC :: Flag
-fS = 7
-fZ = 6
-fA = 4
-fP = 2
-fC = 0
+pattern FS, FZ, FAC, FP, FC :: Flag
+pattern FS = 7
+pattern FZ = 6
+pattern FAC = 4
+pattern FP = 2
+pattern FC = 0
 
 data Op
     = Reg Reg
