@@ -5,8 +5,7 @@ import Prelude ()
 -- import Data.Word
 import Clash.Prelude
 
-type NumRegs = 8
-type Reg = Index NumRegs
+type Reg = Index 8
 
 pattern RA, RFlags, RB, RC, RD, RE, RH, RL :: Reg
 pattern RA = 7
