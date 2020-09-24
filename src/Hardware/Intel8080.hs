@@ -17,7 +17,9 @@ pattern RE = 3
 pattern RH = 4
 pattern RL = 5
 
-data RegPair = Regs Reg Reg | SP
+data RegPair
+    = Regs Reg Reg
+    | SP
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
 pattern RAF, RBC, RDE, RHL :: RegPair
@@ -35,19 +37,19 @@ pattern FAC = 4
 pattern FP = 2
 pattern FC = 0
 
-data Op
-    = Reg Reg
-    | Addr RegPair
-    deriving (Eq, Ord, Show, Generic, NFDataX)
-
 type Value = Unsigned 8
 type Addr = Unsigned 16
 type Port = Unsigned 8
 type Interrupt = Unsigned 3
 
-data Src
-    = Op Op
-    | Imm
+data LHS
+    = Reg Reg
+    | Addr RegPair
+    deriving (Eq, Ord, Show, Generic, NFDataX)
+
+data RHS
+    = Imm
+    | LHS LHS
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
 data ALU = ADD | ADC | SUB | SBB | AND | OR | XOR | RotateR | RotateL | ShiftR | ShiftL
@@ -57,17 +59,17 @@ data Cond = Cond Flag Bool
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
 data Instr
-    = MOV Op Src
+    = MOV LHS RHS
     | LXI RegPair
     | LDA
     | STA
     | LHLD
     | SHLD
     | XCHG
-    | ALU ALU Src
-    | CMP Src
-    | INR Op
-    | DCR Op
+    | ALU ALU RHS
+    | CMP RHS
+    | INR LHS
+    | DCR LHS
     | INX RegPair
     | DCX RegPair
     | DAD RegPair

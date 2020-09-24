@@ -104,10 +104,10 @@ mc ops = let (first, ops') = stepsOf ops
 
 evalSrc src k = case src of
     Imm -> mc $ imm1 >++> k
-    Op (Reg r) -> mc $
+    LHS (Reg r) -> mc $
         step INothing (Get r) INothing >++>
         k
-    Op (Addr rr) -> mc $
+    LHS (Addr rr) -> mc $
         step INothing         (Get2 rr) INothing >++>
         step (IJust Indirect) ReadMem   INothing >++>
         k

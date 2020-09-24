@@ -7,9 +7,9 @@ import Clash.Prelude
 import Hardware.Intel8080
 import Debug.Trace
 
-decodeOp :: Reg -> Op
-decodeOp 6 = Addr RHL
-decodeOp reg = Reg reg
+decodeLHS :: Reg -> LHS
+decodeLHS 6 = Addr RHL
+decodeLHS reg = Reg reg
 
 decodeCond :: Vec 3 Bit -> Cond
 decodeCond cond = Cond flag b
@@ -35,7 +35,7 @@ decodeInstr :: Unsigned 8 -> Instr
 decodeInstr b1 =
     case b1 of
         $(bitPattern "01110110") -> HLT
-        $(bitPattern "01......") -> MOV d (Op s)
+        $(bitPattern "01......") -> MOV d (LHS s)
         $(bitPattern "00...110") -> MOV d Imm
         $(bitPattern "00..0001") -> LXI rr
 
@@ -43,30 +43,30 @@ decodeInstr b1 =
         $(bitPattern "00110010") -> STA
         $(bitPattern "00101010") -> LHLD
         $(bitPattern "00100010") -> SHLD
-        $(bitPattern "00..1010") -> MOV (Reg RA) (Op $ Addr rr) -- LDAX rp
-        $(bitPattern "00..0010") -> MOV (Addr rr) (Op $ Reg RA) -- STAX rp
+        $(bitPattern "00..1010") -> MOV (Reg RA) (LHS $ Addr rr) -- LDAX rp
+        $(bitPattern "00..0010") -> MOV (Addr rr) (LHS $ Reg RA) -- STAX rp
         $(bitPattern "11101011") -> XCHG
 
-        $(bitPattern "10000...") -> ALU ADD (Op s)
+        $(bitPattern "10000...") -> ALU ADD (LHS s)
         $(bitPattern "11000110") -> ALU ADD Imm
-        $(bitPattern "10001...") -> ALU ADC (Op s)
+        $(bitPattern "10001...") -> ALU ADC (LHS s)
         $(bitPattern "11001110") -> ALU ADC Imm
 
-        $(bitPattern "10010...") -> ALU SUB (Op s)
+        $(bitPattern "10010...") -> ALU SUB (LHS s)
         $(bitPattern "11010110") -> ALU SUB Imm
-        $(bitPattern "10011...") -> ALU SBB (Op s)
+        $(bitPattern "10011...") -> ALU SBB (LHS s)
         $(bitPattern "11011110") -> ALU SBB Imm
 
-        $(bitPattern "10100...") -> ALU AND (Op s)
+        $(bitPattern "10100...") -> ALU AND (LHS s)
         $(bitPattern "11100110") -> ALU AND Imm
 
-        $(bitPattern "10110...") -> ALU OR (Op s)
+        $(bitPattern "10110...") -> ALU OR (LHS s)
         $(bitPattern "11110110") -> ALU OR Imm
 
-        $(bitPattern "10101...") -> ALU XOR (Op s)
+        $(bitPattern "10101...") -> ALU XOR (LHS s)
         $(bitPattern "11101110") -> ALU XOR Imm
 
-        $(bitPattern "10111...") -> CMP (Op s)
+        $(bitPattern "10111...") -> CMP (LHS s)
         $(bitPattern "11111110") -> CMP Imm
 
         $(bitPattern "00...100") -> INR d
@@ -111,8 +111,8 @@ decodeInstr b1 =
 
   where
     b1'@(_ :> _ :> d2@r :> d1@p :> d0 :> s2 :> s1 :> s0 :> Nil) = bitCoerce b1 :: Vec 8 Bit
-    d = decodeOp $ bitCoerce (d2, d1, d0)
-    s = decodeOp $ bitCoerce (s2, s1, s0)
+    d = decodeLHS $ bitCoerce (d2, d1, d0)
+    s = decodeLHS $ bitCoerce (s2, s1, s0)
     rr = decodeRR r p
     rrpp = decodeRRPP r p
     cond = decodeCond (d2 :> d1 :> d0 :> Nil)
