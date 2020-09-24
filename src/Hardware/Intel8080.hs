@@ -26,7 +26,7 @@ pattern RBC = Regs RB RC
 pattern RDE = Regs RD RE
 pattern RHL = Regs RH RL
 
-type Flag = Index 8
+type Flag = Index (BitSize Value)
 
 pattern FS, FZ, FAC, FP, FC :: Flag
 pattern FS = 7
