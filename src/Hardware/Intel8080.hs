@@ -37,7 +37,7 @@ pattern FC = 0
 
 data Op
     = Reg Reg
-    | AddrHL
+    | Addr RegPair
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
 type Value = Unsigned 8
@@ -63,8 +63,6 @@ data Instr
     | STA
     | LHLD
     | SHLD
-    | LDAX RegPair
-    | STAX RegPair
     | XCHG
     | ALU ALU Src
     | CMP Src

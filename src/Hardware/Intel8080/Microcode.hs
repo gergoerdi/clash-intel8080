@@ -107,9 +107,9 @@ evalSrc src k = case src of
     Op (Reg r) -> mc $
         step INothing (Get r) INothing >++>
         k
-    Op AddrHL -> mc $
-        step INothing         (Get2 RHL) INothing >++>
-        step (IJust Indirect) ReadMem    INothing >++>
+    Op (Addr rr) -> mc $
+        step INothing         (Get2 rr) INothing >++>
+        step (IJust Indirect) ReadMem   INothing >++>
         k
 
 microcode :: Instr -> Microcode
@@ -168,23 +168,16 @@ microcode LDA = mc $
 microcode STA = mc $
     imm2 >++>
     step INothing (Get RA) (IJust Indirect)
-microcode (LDAX rp) = mc $
-    step INothing         (Get2 rp) INothing >++>
-    step (IJust Indirect) ReadMem   INothing >++>
-    step INothing         (Set RA)  INothing
-microcode (STAX rp) = mc $
-    step INothing (Get2 rp) INothing >++>
-    step INothing (Get RA)  (IJust Indirect)
-microcode (DCX rp) = mc $
-    step INothing (Get2 rp)             INothing >++>
+microcode (DCX rr) = mc $
+    step INothing (Get2 rr)             INothing >++>
     step INothing (Compute2 Dec2 KeepC) INothing >++>
-    step INothing (Swap2 rp)            INothing
-microcode (INX rp) = mc $
-    step INothing (Get2 rp)             INothing >++>
+    step INothing (Swap2 rr)            INothing
+microcode (INX rr) = mc $
+    step INothing (Get2 rr)             INothing >++>
     step INothing (Compute2 Inc2 KeepC) INothing >++>
-    step INothing (Swap2 rp)            INothing
-microcode (INR AddrHL) = mc $
-    step INothing         (Get2 RHL)                        INothing >++>
+    step INothing (Swap2 rr)            INothing
+microcode (INR (Addr rr)) = mc $
+    step INothing         (Get2 rr)                         INothing >++>
     step (IJust Indirect) ReadMem                           INothing >++>
     step INothing         (Compute Const01 ADD KeepC SetAC) INothing >++>
     step INothing         UpdateFlags                       (IJust Indirect)
@@ -193,8 +186,8 @@ microcode (INR (Reg r)) = mc $
     step INothing (Compute Const01 ADD KeepC SetAC) INothing >++>
     step INothing UpdateFlags                       INothing >++>
     step INothing (Set r)                           INothing
-microcode (DCR AddrHL) = mc $
-    step INothing         (Get2 RHL)                        INothing >++>
+microcode (DCR (Addr rr)) = mc $
+    step INothing         (Get2 rr)                         INothing >++>
     step (IJust Indirect) ReadMem                           INothing >++>
     step INothing         (Compute ConstFF ADD KeepC SetAC) INothing >++>
     step INothing         UpdateFlags                       (IJust Indirect)
@@ -203,8 +196,8 @@ microcode (DCR (Reg r)) = mc $
     step INothing (Compute ConstFF ADD KeepC SetAC) INothing >++>
     step INothing UpdateFlags                       INothing >++>
     step INothing (Set r)                           INothing
-microcode (DAD rp) = mc $
-    step INothing (Get2 rp)             INothing >++>
+microcode (DAD rr) = mc $
+    step INothing (Get2 rr)             INothing >++>
     step INothing (Compute2 AddHL SetC) INothing >++>
     step INothing (Swap2 RHL)           INothing
 microcode DAA = mc $
@@ -212,9 +205,9 @@ microcode DAA = mc $
     step INothing FixupBCD    INothing >++>
     step INothing UpdateFlags INothing >++>
     step INothing (Set RA)    INothing
-microcode (LXI rp) = mc $
+microcode (LXI rr) = mc $
     imm2 >++>
-    step INothing (Swap2 rp) INothing
+    step INothing (Swap2 rr) INothing
 microcode PCHL = mc $
     step INothing (Get2 RHL) INothing >++>
     step INothing Jump       INothing
@@ -237,16 +230,16 @@ microcode XTHL = mc $
     pop2 >++>
     step INothing (Swap2 RHL) INothing >++>
     push2
-microcode (PUSH rp) = mc $
-    step INothing (Get2 rp) INothing >++>
+microcode (PUSH rr) = mc $
+    step INothing (Get2 rr) INothing >++>
     push2
-microcode (POP rp) = mc $
+microcode (POP rr) = mc $
     pop2 >++>
-    step INothing (Swap2 rp) INothing
+    step INothing (Swap2 rr) INothing
 microcode (MOV (Reg r) src) = evalSrc src $
     step INothing (Set r) INothing
-microcode (MOV AddrHL src) = evalSrc src $
-    step INothing (Get2 RHL) (IJust Indirect)
+microcode (MOV (Addr rr) src) = evalSrc src $
+    step INothing (Get2 rr) (IJust Indirect)
 microcode XCHG = mc $
     step INothing (Get2 RHL)  INothing >++>
     step INothing (Swap2 RDE) INothing >++>

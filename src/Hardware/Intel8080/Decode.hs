@@ -8,7 +8,7 @@ import Hardware.Intel8080
 import Debug.Trace
 
 decodeOp :: Reg -> Op
-decodeOp 6 = AddrHL
+decodeOp 6 = Addr RHL
 decodeOp reg = Reg reg
 
 decodeCond :: Vec 3 Bit -> Cond
@@ -21,15 +21,15 @@ decodeCond cond = Cond flag b
         0b10 -> FP
         0b11 -> FS
 
-decodeRP :: Bit -> Bit -> RegPair
-decodeRP 0 0 = RBC
-decodeRP 0 1 = RDE
-decodeRP 1 0 = RHL
-decodeRP 1 1 = SP
+decodeRR :: Bit -> Bit -> RegPair
+decodeRR 0 0 = RBC
+decodeRR 0 1 = RDE
+decodeRR 1 0 = RHL
+decodeRR 1 1 = SP
 
-decodeRPPP :: Bit -> Bit -> RegPair
-decodeRPPP 1 1 = RAF
-decodeRPPP r p = decodeRP r p
+decodeRRPP :: Bit -> Bit -> RegPair
+decodeRRPP 1 1 = RAF
+decodeRRPP r p = decodeRR r p
 
 decodeInstr :: Unsigned 8 -> Instr
 decodeInstr b1 =
@@ -37,14 +37,14 @@ decodeInstr b1 =
         $(bitPattern "01110110") -> HLT
         $(bitPattern "01......") -> MOV d (Op s)
         $(bitPattern "00...110") -> MOV d Imm
-        $(bitPattern "00..0001") -> LXI rp
+        $(bitPattern "00..0001") -> LXI rr
 
         $(bitPattern "00111010") -> LDA
         $(bitPattern "00110010") -> STA
         $(bitPattern "00101010") -> LHLD
         $(bitPattern "00100010") -> SHLD
-        $(bitPattern "00..1010") -> LDAX rp
-        $(bitPattern "00..0010") -> STAX rp
+        $(bitPattern "00..1010") -> MOV (Reg RA) (Op $ Addr rr) -- LDAX rp
+        $(bitPattern "00..0010") -> MOV (Addr rr) (Op $ Reg RA) -- STAX rp
         $(bitPattern "11101011") -> XCHG
 
         $(bitPattern "10000...") -> ALU ADD (Op s)
@@ -71,10 +71,10 @@ decodeInstr b1 =
 
         $(bitPattern "00...100") -> INR d
         $(bitPattern "00...101") -> DCR d
-        $(bitPattern "00..0011") -> INX rp
-        $(bitPattern "00..1011") -> DCX rp
+        $(bitPattern "00..0011") -> INX rr
+        $(bitPattern "00..1011") -> DCX rr
 
-        $(bitPattern "00..1001") -> DAD rp
+        $(bitPattern "00..1001") -> DAD rr
         $(bitPattern "00100111") -> DAA
 
         $(bitPattern "00000111") -> RLC
@@ -97,8 +97,8 @@ decodeInstr b1 =
         $(bitPattern "11010011") -> OUT
 
         $(bitPattern "11101001") -> PCHL
-        $(bitPattern "11..0101") -> PUSH rppp
-        $(bitPattern "11..0001") -> POP rppp
+        $(bitPattern "11..0101") -> PUSH rrpp
+        $(bitPattern "11..0001") -> POP rrpp
         $(bitPattern "11100011") -> XTHL
         $(bitPattern "11111001") -> SPHL
 
@@ -113,6 +113,6 @@ decodeInstr b1 =
     b1'@(_ :> _ :> d2@r :> d1@p :> d0 :> s2 :> s1 :> s0 :> Nil) = bitCoerce b1 :: Vec 8 Bit
     d = decodeOp $ bitCoerce (d2, d1, d0)
     s = decodeOp $ bitCoerce (s2, s1, s0)
-    rp = decodeRP r p
-    rppp = decodeRPPP r p
+    rr = decodeRR r p
+    rrpp = decodeRRPP r p
     cond = decodeCond (d2 :> d1 :> d0 :> Nil)
