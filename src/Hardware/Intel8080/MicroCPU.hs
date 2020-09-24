@@ -61,20 +61,12 @@ uexec (ToBuf target) = assign valueBuf =<< case target of
         (v, pc') <- twist <$> use pc
         pc .= pc'
         return v
-uexec (FromBuf target) = do
+uexec ToAddrBuf = do
     x <- use valueBuf
-    case target of
-        AddrBuf -> do
-            (y, _) <- twist <$> use addrBuf
-            addrBuf .= bitCoerce (x, y)
-        PC -> do
-            (y, _) <- twist <$> use pc
-            assign pc $ bitCoerce (x, y)
+    (y, _) <- twist <$> use addrBuf
+    addrBuf .= bitCoerce (x, y)
 uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
-uexec (Swap2 rp) = do
-    tmp <- use addrBuf
-    assign addrBuf =<< use (regPair rp)
-    regPair rp .= tmp
+uexec (Swap2 rp) = swap addrBuf (regPair rp)
 uexec Jump = assign pc =<< use addrBuf
 uexec ReadMem = loadIn
 uexec (When cond) = do

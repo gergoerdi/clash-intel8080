@@ -27,7 +27,7 @@ data Effect
     = Get Reg
     | Set Reg
     | ToBuf Target
-    | FromBuf Target
+    | ToAddrBuf
     | Get2 RegPair
     | Swap2 RegPair
     | Jump
@@ -69,10 +69,10 @@ type MicroSteps = Steps Addressing Effect Addressing
 imm1 = step (IJust IncrPC) ReadMem INothing
 
 imm2 =
-    step (IJust IncrPC) ReadMem           INothing >++>
-    step INothing       (FromBuf AddrBuf) INothing >++>
-    step (IJust IncrPC) ReadMem           INothing >++>
-    step INothing       (FromBuf AddrBuf) INothing
+    step (IJust IncrPC) ReadMem   INothing >++>
+    step INothing       ToAddrBuf INothing >++>
+    step (IJust IncrPC) ReadMem   INothing >++>
+    step INothing       ToAddrBuf INothing
 
 push2 =
     step INothing (ToBuf AddrBuf) (IJust DecrSP) >++>
@@ -83,10 +83,10 @@ pushPC =
     step INothing (ToBuf PC) (IJust DecrSP)
 
 pop2 =
-    step (IJust IncrSP) ReadMem           INothing >++>
-    step INothing       (FromBuf AddrBuf) INothing >++>
-    step (IJust IncrSP) ReadMem           INothing >++>
-    step INothing       (FromBuf AddrBuf) INothing
+    step (IJust IncrSP) ReadMem   INothing >++>
+    step INothing       ToAddrBuf INothing >++>
+    step (IJust IncrSP) ReadMem   INothing >++>
+    step INothing       ToAddrBuf INothing
 
 shiftRotate op =
     step INothing (Get RA)                      INothing >++>
@@ -246,11 +246,11 @@ microcode XCHG = mc $
     step INothing (Swap2 RHL) INothing
 microcode IN = mc $
     imm1 >++>
-    step INothing     (FromBuf AddrBuf) INothing >++>
-    step (IJust Port) ReadMem           INothing >++>
-    step INothing     (Set RA)          INothing
+    step INothing     ToAddrBuf INothing >++>
+    step (IJust Port) ReadMem   INothing >++>
+    step INothing     (Set RA)  INothing
 microcode OUT = mc $
     imm1 >++>
-    step INothing (FromBuf AddrBuf) INothing      >++>
-    step INothing (Get RA)          (IJust Port)
+    step INothing ToAddrBuf INothing      >++>
+    step INothing (Get RA)  (IJust Port)
 -- microcode instr = errorX $ show instr
