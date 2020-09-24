@@ -52,19 +52,9 @@ evalCond (Cond f target) = uses (flag f) (== target)
 uexec :: (MicroM s m) => Effect -> m ()
 uexec (Get r) = assign valueBuf =<< use (reg r)
 uexec (Set r) = assign (reg r) =<< use valueBuf
-uexec (ToBuf target) = assign valueBuf =<< case target of
-    AddrBuf -> do
-        (v, addr') <- twist <$> use addrBuf
-        addrBuf .= addr'
-        return v
-    PC -> do
-        (v, pc') <- twist <$> use pc
-        pc .= pc'
-        return v
-uexec ToAddrBuf = do
-    x <- use valueBuf
-    (y, _) <- twist <$> use addrBuf
-    addrBuf .= bitCoerce (x, y)
+uexec FromPC = assign valueBuf =<< twistFrom pc
+uexec FromAddrBuf = assign valueBuf =<< twistFrom addrBuf
+uexec ToAddrBuf = twistTo addrBuf =<< use valueBuf
 uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
 uexec (Swap2 rp) = swap addrBuf (regPair rp)
 uexec Jump = assign pc =<< use addrBuf
@@ -125,6 +115,17 @@ twist x = (hi, lohi)
   where
     (hi, lo) = bitCoerce x :: (Value, Value)
     lohi = bitCoerce (lo, hi)
+
+twistFrom :: (MonadState s m) => Lens' s Addr -> m Value
+twistFrom l = do
+    (v, addr') <- twist <$> use l
+    l .= addr'
+    return v
+
+twistTo :: (MonadState s m) => Lens' s Addr -> Value -> m ()
+twistTo l x = do
+    (y, _) <- twist <$> use l
+    l .= bitCoerce (x, y)
 
 swap :: (MonadState s m) => Lens' s a -> Lens' s a -> m ()
 swap lx ly = do

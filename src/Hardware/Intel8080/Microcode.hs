@@ -26,7 +26,8 @@ data UpdateC
 data Effect
     = Get Reg
     | Set Reg
-    | ToBuf Target
+    | FromPC
+    | FromAddrBuf
     | ToAddrBuf
     | Get2 RegPair
     | Swap2 RegPair
@@ -59,11 +60,6 @@ data ALU0
     | ConstTrue0
     deriving (Show, Generic, NFDataX)
 
-data Target
-    = AddrBuf
-    | PC
-    deriving (Show, Generic, NFDataX)
-
 type MicroSteps = Steps Addressing Effect Addressing
 
 imm1 = step (IJust IncrPC) ReadMem INothing
@@ -75,12 +71,12 @@ imm2 =
     step INothing       ToAddrBuf INothing
 
 push2 =
-    step INothing (ToBuf AddrBuf) (IJust DecrSP) >++>
-    step INothing (ToBuf AddrBuf) (IJust DecrSP)
+    step INothing FromAddrBuf (IJust DecrSP) >++>
+    step INothing FromAddrBuf (IJust DecrSP)
 
 pushPC =
-    step INothing (ToBuf PC) (IJust DecrSP) >++>
-    step INothing (ToBuf PC) (IJust DecrSP)
+    step INothing FromPC (IJust DecrSP) >++>
+    step INothing FromPC (IJust DecrSP)
 
 pop2 =
     step (IJust IncrSP) ReadMem   INothing >++>
