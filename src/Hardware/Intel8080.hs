@@ -100,12 +100,14 @@ data Instr
     | NOP
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
+pattern MVI lhs = MOV lhs Imm
+
 pattern ADD rhs = ALU (Add False) rhs
 pattern ADC rhs = ALU (Add True) rhs
 pattern SUB rhs = ALU (Sub False) rhs
 pattern SBC rhs = ALU (Sub True) rhs
 pattern AND rhs = ALU And rhs
-pattern OR  rhs = ALU Or rhs
+pattern ORA rhs = ALU Or rhs
 pattern XOR rhs = ALU XOr rhs
 pattern LDAX rr = MOV (Reg RA) (LHS (Addr rr))
 pattern STAX rr = MOV (Addr rr) (LHS (Reg RA))

@@ -36,7 +36,7 @@ decodeInstr b1 =
     case b1 of
         $(bitPattern "01110110") -> HLT
         $(bitPattern "01......") -> MOV d (LHS s)
-        $(bitPattern "00...110") -> MOV d Imm
+        $(bitPattern "00...110") -> MVI d
         $(bitPattern "00..0001") -> LXI rr
 
         $(bitPattern "00111010") -> LDA
@@ -63,8 +63,8 @@ decodeInstr b1 =
         $(bitPattern "10101...") -> XOR (LHS s)
         $(bitPattern "11101110") -> XOR Imm
 
-        $(bitPattern "10110...") -> OR (LHS s)
-        $(bitPattern "11110110") -> OR Imm
+        $(bitPattern "10110...") -> ORA (LHS s)
+        $(bitPattern "11110110") -> ORA Imm
 
         $(bitPattern "10111...") -> CMP (LHS s)
         $(bitPattern "11111110") -> CMP Imm
