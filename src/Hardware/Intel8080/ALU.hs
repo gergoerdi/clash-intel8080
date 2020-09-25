@@ -7,11 +7,11 @@ import Hardware.Intel8080
 
 binALU :: ALU -> Bool -> Value -> Value -> (Bool, Bool, Value)
 binALU fun c x y = case fun of
-    ADD c0 -> addC x y (c0 && c)
-    SUB c0 -> subC x y (c0 && c)
-    AND -> (testBit (x .|. y) 4, False, x .&. y)
-    OR -> (False, False, x .|. y)
-    XOR -> (False, False, x `xor` y)
+    Add c0 -> addC x y (c0 && c)
+    Sub c0 -> subC x y (c0 && c)
+    And    -> (testBit (x .|. y) 4, False, x .&. y)
+    Or     -> (False, False, x .|. y)
+    XOr    -> (False, False, x `xor` y)
   where
     addC x y c =
         let xl, yl, xh, yh, zl, zh :: Unsigned 4

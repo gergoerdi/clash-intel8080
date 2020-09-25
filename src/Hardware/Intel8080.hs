@@ -52,7 +52,7 @@ data RHS
     | LHS LHS
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
-data ALU = ADD Bool | SUB Bool | AND | OR | XOR
+data ALU = Add Bool | Sub Bool | And | Or | XOr
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
 data ShiftRotate = Shift | Rotate
@@ -99,3 +99,17 @@ data Instr
     | HLT
     | NOP
     deriving (Eq, Ord, Show, Generic, NFDataX)
+
+pattern ADD rhs = ALU (Add False) rhs
+pattern ADC rhs = ALU (Add True) rhs
+pattern SUB rhs = ALU (Sub False) rhs
+pattern SBC rhs = ALU (Sub True) rhs
+pattern AND rhs = ALU And rhs
+pattern OR  rhs = ALU Or rhs
+pattern XOR rhs = ALU XOr rhs
+pattern LDAX rr = MOV (Reg RA) (LHS (Addr rr))
+pattern STAX rr = MOV (Addr rr) (LHS (Reg RA))
+pattern RLC = SHROT (Left Rotate)
+pattern RRC = SHROT (Right Rotate)
+pattern RAL = SHROT (Left Shift)
+pattern RAR = SHROT (Right Shift)

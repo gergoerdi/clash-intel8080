@@ -43,28 +43,28 @@ decodeInstr b1 =
         $(bitPattern "00110010") -> STA
         $(bitPattern "00101010") -> LHLD
         $(bitPattern "00100010") -> SHLD
-        $(bitPattern "00..1010") -> MOV (Reg RA) (LHS $ Addr rr) -- LDAX rp
-        $(bitPattern "00..0010") -> MOV (Addr rr) (LHS $ Reg RA) -- STAX rp
+        $(bitPattern "00..1010") -> LDAX rr
+        $(bitPattern "00..0010") -> STAX rr
         $(bitPattern "11101011") -> XCHG
 
-        $(bitPattern "10000...") -> ALU (ADD False) (LHS s)
-        $(bitPattern "11000110") -> ALU (ADD False) Imm
-        $(bitPattern "10001...") -> ALU (ADD True)  (LHS s)
-        $(bitPattern "11001110") -> ALU (ADD True)  Imm
+        $(bitPattern "10000...") -> ADD (LHS s)
+        $(bitPattern "11000110") -> ADD Imm
+        $(bitPattern "10001...") -> ADC (LHS s)
+        $(bitPattern "11001110") -> ADC Imm
 
-        $(bitPattern "10010...") -> ALU (SUB False) (LHS s)
-        $(bitPattern "11010110") -> ALU (SUB False) Imm
-        $(bitPattern "10011...") -> ALU (SUB True)  (LHS s)
-        $(bitPattern "11011110") -> ALU (SUB True)  Imm
+        $(bitPattern "10010...") -> SUB (LHS s)
+        $(bitPattern "11010110") -> SUB Imm
+        $(bitPattern "10011...") -> SBC (LHS s)
+        $(bitPattern "11011110") -> SBC Imm
 
-        $(bitPattern "10100...") -> ALU AND (LHS s)
-        $(bitPattern "11100110") -> ALU AND Imm
+        $(bitPattern "10100...") -> AND (LHS s)
+        $(bitPattern "11100110") -> AND Imm
 
-        $(bitPattern "10110...") -> ALU OR (LHS s)
-        $(bitPattern "11110110") -> ALU OR Imm
+        $(bitPattern "10101...") -> XOR (LHS s)
+        $(bitPattern "11101110") -> XOR Imm
 
-        $(bitPattern "10101...") -> ALU XOR (LHS s)
-        $(bitPattern "11101110") -> ALU XOR Imm
+        $(bitPattern "10110...") -> OR (LHS s)
+        $(bitPattern "11110110") -> OR Imm
 
         $(bitPattern "10111...") -> CMP (LHS s)
         $(bitPattern "11111110") -> CMP Imm
@@ -77,10 +77,10 @@ decodeInstr b1 =
         $(bitPattern "00..1001") -> DAD rr
         $(bitPattern "00100111") -> DAA
 
-        $(bitPattern "00000111") -> SHROT $ Left  Rotate
-        $(bitPattern "00001111") -> SHROT $ Right Rotate
-        $(bitPattern "00010111") -> SHROT $ Left  Shift
-        $(bitPattern "00011111") -> SHROT $ Right Shift
+        $(bitPattern "00000111") -> RLC
+        $(bitPattern "00001111") -> RRC
+        $(bitPattern "00010111") -> RAL
+        $(bitPattern "00011111") -> RAR
 
         $(bitPattern "00101111") -> CMA
         $(bitPattern "00111111") -> CMC

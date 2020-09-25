@@ -110,7 +110,7 @@ microcode NOP = mc $ step INothing (When Nothing) INothing
 microcode (INT b) = mc $ step INothing (SetInt b) INothing
 microcode CMA = mc $
     step INothing (Get RA)                                   INothing >++>
-    step INothing (Compute ConstFF (SUB False) KeepC KeepAC) INothing >++>
+    step INothing (Compute ConstFF (Sub False) KeepC KeepAC) INothing >++>
     step INothing (Set RA)                                   INothing
 microcode CMC = mc $
     step INothing (Compute0 FC Complement0) INothing
@@ -121,7 +121,7 @@ microcode (ALU fun src) = evalSrc src $
     step INothing UpdateFlags                   INothing >++>
     step INothing (Set RA)                      INothing
 microcode (CMP src) = evalSrc src $
-    step INothing (Compute RegA (SUB False) SetC SetAC) INothing >++>
+    step INothing (Compute RegA (Sub False) SetC SetAC) INothing >++>
     step INothing UpdateFlags                           INothing
 microcode (SHROT sr) = mc $
     step INothing (Get RA)       INothing >++>
@@ -171,21 +171,21 @@ microcode (INX rr) = mc $
 microcode (INR (Addr rr)) = mc $
     step INothing         (Get2 rr)                                 INothing >++>
     step (IJust Indirect) ReadMem                                   INothing >++>
-    step INothing         (Compute Const01 (ADD False) KeepC SetAC) INothing >++>
+    step INothing         (Compute Const01 (Add False) KeepC SetAC) INothing >++>
     step INothing         UpdateFlags                               (IJust Indirect)
 microcode (INR (Reg r)) = mc $
     step INothing (Get r)                                   INothing >++>
-    step INothing (Compute Const01 (ADD False) KeepC SetAC) INothing >++>
+    step INothing (Compute Const01 (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (Set r)                                   INothing
 microcode (DCR (Addr rr)) = mc $
     step INothing         (Get2 rr)                                 INothing >++>
     step (IJust Indirect) ReadMem                                   INothing >++>
-    step INothing         (Compute ConstFF (ADD False) KeepC SetAC) INothing >++>
+    step INothing         (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
     step INothing         UpdateFlags                               (IJust Indirect)
 microcode (DCR (Reg r)) = mc $
     step INothing (Get r)                                   INothing >++>
-    step INothing (Compute ConstFF (ADD False) KeepC SetAC) INothing >++>
+    step INothing (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (Set r)                                   INothing
 microcode (DAD rr) = mc $
