@@ -111,7 +111,11 @@ pattern ORA rhs = ALU Or rhs
 pattern XOR rhs = ALU XOr rhs
 pattern LDAX rr = MOV (Reg RA) (LHS (Addr rr))
 pattern STAX rr = MOV (Addr rr) (LHS (Reg RA))
+
 pattern RLC = SHROT (Left Rotate)
 pattern RRC = SHROT (Right Rotate)
 pattern RAL = SHROT (Left Shift)
 pattern RAR = SHROT (Right Shift)
+
+pattern DI = INT False
+pattern EI = INT True

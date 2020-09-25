@@ -31,11 +31,11 @@ decodeRRPP :: Bit -> Bit -> RegPair
 decodeRRPP 1 1 = RAF
 decodeRRPP r p = decodeRR r p
 
-decodeInstr :: Unsigned 8 -> Instr
+decodeInstr :: Value -> Instr
 decodeInstr b1 =
     case b1 of
         $(bitPattern "01110110") -> HLT
-        $(bitPattern "01......") -> MOV d (LHS s)
+        $(bitPattern "01......") -> MOV d s
         $(bitPattern "00...110") -> MVI d
         $(bitPattern "00..0001") -> LXI rr
 
@@ -47,26 +47,26 @@ decodeInstr b1 =
         $(bitPattern "00..0010") -> STAX rr
         $(bitPattern "11101011") -> XCHG
 
-        $(bitPattern "10000...") -> ADD (LHS s)
+        $(bitPattern "10000...") -> ADD s
         $(bitPattern "11000110") -> ADD Imm
-        $(bitPattern "10001...") -> ADC (LHS s)
+        $(bitPattern "10001...") -> ADC s
         $(bitPattern "11001110") -> ADC Imm
 
-        $(bitPattern "10010...") -> SUB (LHS s)
+        $(bitPattern "10010...") -> SUB s
         $(bitPattern "11010110") -> SUB Imm
-        $(bitPattern "10011...") -> SBC (LHS s)
+        $(bitPattern "10011...") -> SBC s
         $(bitPattern "11011110") -> SBC Imm
 
-        $(bitPattern "10100...") -> AND (LHS s)
+        $(bitPattern "10100...") -> AND s
         $(bitPattern "11100110") -> AND Imm
 
-        $(bitPattern "10101...") -> XOR (LHS s)
+        $(bitPattern "10101...") -> XOR s
         $(bitPattern "11101110") -> XOR Imm
 
-        $(bitPattern "10110...") -> ORA (LHS s)
+        $(bitPattern "10110...") -> ORA s
         $(bitPattern "11110110") -> ORA Imm
 
-        $(bitPattern "10111...") -> CMP (LHS s)
+        $(bitPattern "10111...") -> CMP s
         $(bitPattern "11111110") -> CMP Imm
 
         $(bitPattern "00...100") -> INR d
@@ -102,9 +102,9 @@ decodeInstr b1 =
         $(bitPattern "11100011") -> XTHL
         $(bitPattern "11111001") -> SPHL
 
-        $(bitPattern "11111011") -> INT True
-        $(bitPattern "11110011") -> INT False
-        $(bitPattern "11...111") -> RST $ bitCoerce (d2, d1, d0)
+        $(bitPattern "11111011") -> EI
+        $(bitPattern "11110011") -> DI
+        $(bitPattern "11...111") -> RST rst
         $(bitPattern "00000000") -> NOP
         -- _ -> error $ printf "Unknown opcode: %02x" (fromIntegral b1 :: Word8)
         _ -> NOP
@@ -112,7 +112,8 @@ decodeInstr b1 =
   where
     b1'@(_ :> _ :> d2@r :> d1@p :> d0 :> s2 :> s1 :> s0 :> Nil) = bitCoerce b1 :: Vec 8 Bit
     d = decodeLHS $ bitCoerce (d2, d1, d0)
-    s = decodeLHS $ bitCoerce (s2, s1, s0)
+    s = LHS $ decodeLHS $ bitCoerce (s2, s1, s0)
+    rst = bitCoerce (d2, d1, d0)
     rr = decodeRR r p
     rrpp = decodeRRPP r p
     cond = decodeCond (d2 :> d1 :> d0 :> Nil)

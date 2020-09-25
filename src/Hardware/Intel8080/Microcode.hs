@@ -168,6 +168,10 @@ microcode (INX rr) = mc $
     step INothing (Get2 rr)             INothing >++>
     step INothing (Compute2 Inc2 KeepC) INothing >++>
     step INothing (Swap2 rr)            INothing
+microcode (DAD rr) = mc $
+    step INothing (Get2 rr)             INothing >++>
+    step INothing (Compute2 AddHL SetC) INothing >++>
+    step INothing (Swap2 RHL)           INothing
 microcode (INR (Addr rr)) = mc $
     step INothing         (Get2 rr)                                 INothing >++>
     step (IJust Indirect) ReadMem                                   INothing >++>
@@ -188,10 +192,6 @@ microcode (DCR (Reg r)) = mc $
     step INothing (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (Set r)                                   INothing
-microcode (DAD rr) = mc $
-    step INothing (Get2 rr)             INothing >++>
-    step INothing (Compute2 AddHL SetC) INothing >++>
-    step INothing (Swap2 RHL)           INothing
 microcode DAA = mc $
     step INothing (Get RA)    INothing >++>
     step INothing FixupBCD    INothing >++>
