@@ -80,9 +80,6 @@ library:
     - Hardware.Intel8080.CPU
     - Hardware.Intel8080.Interruptor
 
-data-files:
-  - image/tiny-basic/*.com
-
 tests:
   test-model:
     source-dirs: test
@@ -99,10 +96,3 @@ tests:
       - tasty
       - tasty-golden
       - filepath
-
-executables:
-  tinybasic-model:
-    source-dirs: test
-    main: tinybasic-model.hs
-    dependencies:
-      - terminal
