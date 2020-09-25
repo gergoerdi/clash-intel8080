@@ -47,15 +47,15 @@ decodeInstr b1 =
         $(bitPattern "00..0010") -> MOV (Addr rr) (LHS $ Reg RA) -- STAX rp
         $(bitPattern "11101011") -> XCHG
 
-        $(bitPattern "10000...") -> ALU ADD (LHS s)
-        $(bitPattern "11000110") -> ALU ADD Imm
-        $(bitPattern "10001...") -> ALU ADC (LHS s)
-        $(bitPattern "11001110") -> ALU ADC Imm
+        $(bitPattern "10000...") -> ALU (ADD False) (LHS s)
+        $(bitPattern "11000110") -> ALU (ADD False) Imm
+        $(bitPattern "10001...") -> ALU (ADD True)  (LHS s)
+        $(bitPattern "11001110") -> ALU (ADD True)  Imm
 
-        $(bitPattern "10010...") -> ALU SUB (LHS s)
-        $(bitPattern "11010110") -> ALU SUB Imm
-        $(bitPattern "10011...") -> ALU SBB (LHS s)
-        $(bitPattern "11011110") -> ALU SBB Imm
+        $(bitPattern "10010...") -> ALU (SUB False) (LHS s)
+        $(bitPattern "11010110") -> ALU (SUB False) Imm
+        $(bitPattern "10011...") -> ALU (SUB True)  (LHS s)
+        $(bitPattern "11011110") -> ALU (SUB True)  Imm
 
         $(bitPattern "10100...") -> ALU AND (LHS s)
         $(bitPattern "11100110") -> ALU AND Imm
@@ -77,10 +77,10 @@ decodeInstr b1 =
         $(bitPattern "00..1001") -> DAD rr
         $(bitPattern "00100111") -> DAA
 
-        $(bitPattern "00000111") -> RLC
-        $(bitPattern "00001111") -> RRC
-        $(bitPattern "00010111") -> RAL
-        $(bitPattern "00011111") -> RAR
+        $(bitPattern "00000111") -> ALUA $ SRLeft  Rotate
+        $(bitPattern "00001111") -> ALUA $ SRRight Rotate
+        $(bitPattern "00010111") -> ALUA $ SRLeft  Shift
+        $(bitPattern "00011111") -> ALUA $ SRRight Shift
 
         $(bitPattern "00101111") -> CMA
         $(bitPattern "00111111") -> CMC
