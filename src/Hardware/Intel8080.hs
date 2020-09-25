@@ -52,10 +52,10 @@ data RHS
     | LHS LHS
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
-data ShiftRotate = Shift | Rotate
+data ALU = ADD Bool | SUB Bool | AND | OR | XOR
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
-data ALU = ADD Bool | SUB Bool | AND | OR | XOR | SRLeft ShiftRotate | SRRight ShiftRotate
+data ShiftRotate = Shift | Rotate
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
 data Cond = Cond Flag Bool
@@ -70,8 +70,8 @@ data Instr
     | SHLD
     | XCHG
     | ALU ALU RHS
-    | ALUA ALU
     | CMP RHS
+    | SHROT (Either ShiftRotate ShiftRotate)
     | INR LHS
     | DCR LHS
     | INX RegPair

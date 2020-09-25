@@ -77,10 +77,10 @@ decodeInstr b1 =
         $(bitPattern "00..1001") -> DAD rr
         $(bitPattern "00100111") -> DAA
 
-        $(bitPattern "00000111") -> ALUA $ SRLeft  Rotate
-        $(bitPattern "00001111") -> ALUA $ SRRight Rotate
-        $(bitPattern "00010111") -> ALUA $ SRLeft  Shift
-        $(bitPattern "00011111") -> ALUA $ SRRight Shift
+        $(bitPattern "00000111") -> SHROT $ Left  Rotate
+        $(bitPattern "00001111") -> SHROT $ Right Rotate
+        $(bitPattern "00010111") -> SHROT $ Left  Shift
+        $(bitPattern "00011111") -> SHROT $ Right Shift
 
         $(bitPattern "00101111") -> CMA
         $(bitPattern "00111111") -> CMC

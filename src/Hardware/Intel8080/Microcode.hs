@@ -35,6 +35,7 @@ data Effect
     | ReadMem
     | When (Maybe Cond)
     | Compute ALUArg ALU UpdateC UpdateAC
+    | ComputeSR (Either ShiftRotate ShiftRotate)
     | Compute2 ALU2 UpdateC
     | Compute0 Flag ALU0
     | UpdateFlags
@@ -119,13 +120,13 @@ microcode (ALU fun src) = evalSrc src $
     step INothing (Compute RegA fun SetC SetAC) INothing >++>
     step INothing UpdateFlags                   INothing >++>
     step INothing (Set RA)                      INothing
-microcode (ALUA fun) = mc $
-    step INothing (Get RA)                       INothing >++>
-    step INothing (Compute RegA fun SetC KeepAC) INothing >++>
-    step INothing (Set RA)                       INothing
 microcode (CMP src) = evalSrc src $
     step INothing (Compute RegA (SUB False) SetC SetAC) INothing >++>
     step INothing UpdateFlags                           INothing
+microcode (SHROT sr) = mc $
+    step INothing (Get RA)       INothing >++>
+    step INothing (ComputeSR sr) INothing >++>
+    step INothing (Set RA)       INothing
 microcode (RST irq) = mc $
     pushPC >++>
     step INothing (Rst irq) INothing

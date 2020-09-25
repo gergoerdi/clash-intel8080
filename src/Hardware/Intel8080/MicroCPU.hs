@@ -69,9 +69,15 @@ uexec (Compute arg fun updateC updateAC) = do
         Const01 -> pure 0x01
         ConstFF -> pure 0xff
     y <- use valueBuf
-    let (ac', c', result) = alu fun c x y
+    let (ac', c', result) = binALU fun c x y
     when (updateAC == SetAC) $ flag FAC .= ac'
     when (updateC == SetC) $ flag FC .= c'
+    valueBuf .= result
+uexec (ComputeSR sr) = do
+    c <- use (flag FC)
+    x <- use $ reg RA
+    let (c', result) = shiftRotateALU sr c x
+    flag FC .= c'
     valueBuf .= result
 uexec (Compute2 fun2 updateC) = do
     arg <- case fun2 of
