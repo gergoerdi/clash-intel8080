@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs, ConstraintKinds #-}
 {-# LANGUAGE StandaloneDeriving, DeriveFunctor #-}
 
+{-# LANGUAGE TypeInType #-}
+
 {-# LANGUAGE RankNTypes #-} -- Needed for `step` only
 {-# LANGUAGE UndecidableInstances #-} -- Needed for the `TypeError` instance of `Combine` only
 

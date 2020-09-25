@@ -1,6 +1,8 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TypeInType #-}
+
 module Hardware.Intel8080.Microcode where
 
 import Prelude ()
