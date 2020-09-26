@@ -87,7 +87,7 @@ pop2 =
 
 type RW = Maybe (Either Addressing Addressing)
 type MicroOp = (Effect, RW)
-type MicroLen = 10
+type MicroLen = 9
 type Microcode = (Maybe Addressing, Vec MicroLen MicroOp)
 
 mc :: (KnownNat k, (1 + n + k) ~ MicroLen) => MicroSteps (1 + n) pre post -> Microcode
