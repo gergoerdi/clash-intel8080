@@ -6,13 +6,18 @@ import Clash.Prelude
 import Hardware.Intel8080
 import Hardware.Intel8080.Steps
 
-data Addressing
-    = Indirect
-    | Port
+data InAddr
+    = FromPtr
+    | FromPort
     | IncrPC
     | IncrSP
+    deriving (Enum, Bounded, Eq, Show)
+
+data OutAddr
+    = ToPtr
+    | ToPort
     | DecrSP
-    deriving (Show)
+    deriving (Enum, Bounded, Eq, Show)
 
 data UpdateAC
     = SetAC
@@ -61,7 +66,7 @@ data ALU0
     | ConstTrue0
     deriving (Show, Generic, NFDataX)
 
-type MicroSteps = Steps Addressing MicroInstr Addressing
+type MicroSteps = Steps InAddr MicroInstr OutAddr
 
 imm2 =
     step (IJust IncrPC) ToAddrBuf INothing >++>
@@ -79,10 +84,9 @@ pop2 =
     step (IJust IncrSP) ToAddrBuf INothing >++>
     step (IJust IncrSP) ToAddrBuf INothing
 
-type RW = Maybe (Either Addressing Addressing)
-type MicroOp = (MicroInstr, RW)
+type MicroOp = (MicroInstr, Maybe (Either OutAddr InAddr))
 type MicroLen = 9
-type Microcode = (Maybe Addressing, Vec MicroLen MicroOp)
+type Microcode = (Maybe InAddr, Vec MicroLen MicroOp)
 
 mc :: (KnownNat k, (1 + n + k) ~ MicroLen) => MicroSteps (1 + n) pre post -> Microcode
 mc ops = let (first, ops') = stepsOf ops
@@ -91,7 +95,7 @@ mc ops = let (first, ops') = stepsOf ops
 evalSrc
     :: (KnownNat k, KnownNat k', ((1 + n) + k) ~ MicroLen, ((1 + (1 + n)) + k') ~ MicroLen)
     => RHS
-    -> (forall pre. IMaybe pre Addressing -> MicroSteps (1 + n) pre post)
+    -> (forall pre. IMaybe pre InAddr -> MicroSteps (1 + n) pre post)
     -> Microcode
 evalSrc src k = case src of
     Imm -> mc $
@@ -101,7 +105,7 @@ evalSrc src k = case src of
         k INothing
     LHS (Addr rr) -> mc $
         step INothing (Get2 rr) INothing >++>
-        k (IJust Indirect)
+        k (IJust FromPtr)
 
 microcode :: Instr -> Microcode
 microcode NOP = mc $ step INothing (When Nothing) INothing
@@ -154,10 +158,10 @@ microcode (RETIf cond) = mc $
     step INothing Jump               INothing
 microcode LDA = mc $
     imm2 >++>
-    step (IJust Indirect) (Set RA) INothing
+    step (IJust FromPtr) (Set RA) INothing
 microcode STA = mc $
     imm2 >++>
-    step INothing (Get RA) (IJust Indirect)
+    step INothing (Get RA) (IJust ToPtr)
 microcode (DCX rr) = mc $
     step INothing (Get2 rr)             INothing >++>
     step INothing (Compute2 Dec2 KeepC) INothing >++>
@@ -171,18 +175,18 @@ microcode (DAD rr) = mc $
     step INothing (Compute2 AddHL SetC) INothing >++>
     step INothing (Swap2 RHL)           INothing
 microcode (INR (Addr rr)) = mc $
-    step INothing         (Get2 rr)                                 INothing >++>
-    step (IJust Indirect) (Compute Const01 (Add False) KeepC SetAC) INothing >++>
-    step INothing         UpdateFlags                               (IJust Indirect)
+    step INothing        (Get2 rr)                                 INothing >++>
+    step (IJust FromPtr) (Compute Const01 (Add False) KeepC SetAC) INothing >++>
+    step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (INR (Reg r)) = mc $
     step INothing (Get r)                                   INothing >++>
     step INothing (Compute Const01 (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (Set r)                                   INothing
 microcode (DCR (Addr rr)) = mc $
-    step INothing         (Get2 rr)                                 INothing >++>
-    step (IJust Indirect) (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
-    step INothing         UpdateFlags                               (IJust Indirect)
+    step INothing        (Get2 rr)                                 INothing >++>
+    step (IJust FromPtr) (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
+    step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (DCR (Reg r)) = mc $
     step INothing (Get r)                                   INothing >++>
     step INothing (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
@@ -204,14 +208,14 @@ microcode SPHL = mc $
     step INothing (Swap2 SP) INothing
 microcode LHLD = mc $
     imm2 >++>
-    step (IJust Indirect) (Set RL)              INothing >++>
-    step INothing         (Compute2 Inc2 KeepC) INothing >++>
-    step (IJust Indirect) (Set RH)              INothing
+    step (IJust FromPtr) (Set RL)              INothing >++>
+    step INothing        (Compute2 Inc2 KeepC) INothing >++>
+    step (IJust FromPtr) (Set RH)              INothing
 microcode SHLD = mc $
     imm2 >++>
-    step INothing (Get RL)              (IJust Indirect) >++>
-    step INothing (Compute2 Inc2 KeepC) INothing         >++>
-    step INothing (Get RH)              (IJust Indirect)
+    step INothing (Get RL)              (IJust ToPtr) >++>
+    step INothing (Compute2 Inc2 KeepC) INothing      >++>
+    step INothing (Get RH)              (IJust ToPtr)
 microcode XTHL = mc $
     pop2 >++>
     step INothing (Swap2 RHL) INothing >++>
@@ -225,15 +229,15 @@ microcode (POP rr) = mc $
 microcode (MOV (Reg r) src) = evalSrc src $ \read ->
     step read (Set r) INothing
 microcode (MOV (Addr rr) src) = evalSrc src $ \read ->
-    step read (Get2 rr) (IJust Indirect)
+    step read (Get2 rr) (IJust ToPtr)
 microcode XCHG = mc $
     step INothing (Get2 RHL)  INothing >++>
     step INothing (Swap2 RDE) INothing >++>
     step INothing (Swap2 RHL) INothing
 microcode IN = mc $
-    step (IJust IncrPC) ToAddrBuf INothing >++>
-    step (IJust Port)   (Set RA)  INothing
+    step (IJust IncrPC)   ToAddrBuf INothing >++>
+    step (IJust FromPort) (Set RA)  INothing
 microcode OUT = mc $
-    step (IJust IncrPC) ToAddrBuf INothing     >++>
-    step INothing       (Get RA)  (IJust Port)
+    step (IJust IncrPC) ToAddrBuf INothing >++>
+    step INothing       (Get RA)  (IJust ToPort)
 -- microcode instr = errorX $ show instr

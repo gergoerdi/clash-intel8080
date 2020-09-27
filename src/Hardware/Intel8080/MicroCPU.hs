@@ -138,11 +138,17 @@ swap lx ly = do
     lx .= y
     ly .= x
 
-targetAddress :: (MicroState s, MonadState s m) => Addressing -> m (Either Port Addr)
-targetAddress Port = do
+inAddr :: (MicroState s, MonadState s m) => InAddr -> m (Either Port Addr)
+inAddr FromPtr = Right <$> use addrBuf
+inAddr FromPort = do
     (port, _) <- twist <$> use addrBuf
     return $ Left port
-targetAddress Indirect = Right <$> use addrBuf
-targetAddress IncrPC = Right <$> (use pc <* (pc += 1))
-targetAddress IncrSP = Right <$> (use sp <* (sp += 1))
-targetAddress DecrSP = Right <$> ((sp -= 1) *> use sp)
+inAddr IncrPC = Right <$> (use pc <* (pc += 1))
+inAddr IncrSP = Right <$> (use sp <* (sp += 1))
+
+outAddr :: (MicroState s, MonadState s m) => OutAddr -> m (Either Port Addr)
+outAddr ToPtr = Right <$> use addrBuf
+outAddr ToPort = do
+    (port, _) <- twist <$> use addrBuf
+    return $ Left port
+outAddr DecrSP = Right <$> ((sp -= 1) *> use sp)

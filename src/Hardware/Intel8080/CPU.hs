@@ -203,13 +203,13 @@ nextInstr = do
     latchAddr =<< use pc
     phase .= Fetching False
 
-addressing :: Maybe (Either Addressing Addressing) -> M Bool
+addressing :: Maybe (Either OutAddr InAddr) -> M Bool
 addressing Nothing = return False
 addressing (Just (Left write)) = do
-    doWrite =<< MCPU.targetAddress write
+    doWrite =<< MCPU.outAddr write
     return False
 addressing (Just (Right read)) = do
-    doRead =<< MCPU.targetAddress read
+    doRead =<< MCPU.inAddr read
     return True
 
 doWrite :: Either Port Addr -> M ()

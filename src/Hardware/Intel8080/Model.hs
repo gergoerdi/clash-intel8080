@@ -102,8 +102,8 @@ exec instr = do
     -- liftIO $ print (instr, uops)
     mapM_ ustep uops
 
-addressing :: (Monad m) => Either Addressing Addressing -> CPU m ()
-addressing = either (doWrite <=< MCPU.targetAddress) (doRead <=< MCPU.targetAddress)
+addressing :: (Monad m) => Either OutAddr InAddr -> CPU m ()
+addressing = either (doWrite <=< MCPU.outAddr) (doRead <=< MCPU.inAddr)
 
 doWrite :: (Monad m) => Either Port Addr -> CPU m ()
 doWrite target = either writePort poke target =<< use ureg1
