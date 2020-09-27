@@ -11,23 +11,23 @@ data InAddr
     | FromPort
     | IncrPC
     | IncrSP
-    deriving (Enum, Bounded, Eq, Show)
+    deriving (Show, Eq, Enum, Bounded, Generic, NFDataX, Lift)
 
 data OutAddr
     = ToPtr
     | ToPort
     | DecrSP
-    deriving (Enum, Bounded, Eq, Show)
+    deriving (Show, Eq, Enum, Bounded, Generic, NFDataX, Lift)
 
 data UpdateAC
     = SetAC
     | KeepAC
-    deriving (Show, Eq, Generic, NFDataX)
+    deriving (Show, Eq, Generic, NFDataX, Lift)
 
 data UpdateC
     = SetC
     | KeepC
-    deriving (Show, Eq, Generic, NFDataX)
+    deriving (Show, Eq, Generic, NFDataX, Lift)
 
 data MicroInstr
     = Get Reg
@@ -47,24 +47,25 @@ data MicroInstr
     | Rst (Unsigned 3)
     | SetInt Bool
     | FixupBCD
-    deriving (Show, Generic, NFDataX)
+    | Halt
+    deriving (Show, Generic, NFDataX, Lift)
 
 data ALUArg
     = RegA
     | Const01
     | ConstFF
-    deriving (Show, Generic, NFDataX)
+    deriving (Show, Generic, NFDataX, Lift)
 
 data ALU2
     = Inc2
     | Dec2
     | AddHL
-    deriving (Show, Generic, NFDataX)
+    deriving (Show, Generic, NFDataX, Lift)
 
 data ALU0
     = Complement0
     | ConstTrue0
-    deriving (Show, Generic, NFDataX)
+    deriving (Show, Generic, NFDataX, Lift)
 
 type MicroSteps = Steps InAddr MicroInstr OutAddr
 
@@ -109,7 +110,6 @@ evalSrc src k = case src of
 
 microcode :: Instr -> Microcode
 microcode NOP = mc $ step INothing (When Nothing) INothing
--- microcode HLT = mc _
 microcode (INT b) = mc $ step INothing (SetInt b) INothing
 microcode CMA = mc $
     step INothing (Get RA)                                   INothing >++>
@@ -240,4 +240,6 @@ microcode IN = mc $
 microcode OUT = mc $
     step (IJust IncrPC) ToAddrBuf INothing >++>
     step INothing       (Get RA)  (IJust ToPort)
+microcode HLT = mc $
+    step INothing Halt INothing
 -- microcode instr = errorX $ show instr

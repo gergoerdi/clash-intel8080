@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards, LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Hardware.Intel8080.CPU where
 
 import Clash.Prelude hiding (lift)
@@ -24,6 +25,7 @@ import Data.Maybe (fromMaybe)
 import Barbies
 import Barbies.Bare
 import Data.Barbie.TH
+import qualified Language.Haskell.TH.Syntax as TH
 
 import Debug.Trace
 import Text.Printf
@@ -32,7 +34,7 @@ data Phase
     = Init
     | Halted
     | Fetching Bool
-    | Executing Bool (Index MicroLen)
+    | Executing Value Bool (Index MicroLen)
     deriving (Show, Generic, NFDataX)
 
 declareBareB [d|
@@ -47,7 +49,6 @@ data CPUState = CPUState
     , _registers :: Vec 8 Value
     , _allowInterrupts :: Bool
     , _interrupted :: Bool
-    , _instrBuf :: Instr
     , _valueBuf :: Value
     , _addrBuf :: Addr
     , _addrLatch :: Maybe Addr
@@ -63,7 +64,6 @@ initState = CPUState
     , _registers = replace 1 0x02 $ pure 0x00
     , _allowInterrupts = False
     , _interrupted = False
-    , _instrBuf = NOP
     , _valueBuf = 0x00
     , _addrBuf = 0x0000
     , _addrLatch = Nothing
@@ -179,16 +179,14 @@ cpu inp@CPUIn{..} = do
             acceptInterrupt
             phase .= Fetching True
         Fetching interrupting -> do
-            instr <- {- traceState $ -} decodeInstr <$> if interrupting then readByte inp else fetch inp
-            instrBuf .= instr
-            let (setup, _) = microcode instr
+            instr <- {- traceState $ -} if interrupting then readByte inp else fetch inp
+            let (setup, _) = microcodeFor instr
             load <- addressing (Right <$> setup)
-            phase .= Executing load 0
-        Executing load i -> do
+            phase .= Executing instr load 0
+        Executing instr load i -> do
             when load $ assign valueBuf =<< readFrom dataIn
 
-            instr <- use instrBuf
-            let (uop, teardown) = snd (microcode instr) !! i
+            let (uop, teardown) = snd (microcodeFor instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
             x <- runMaybeT $ MCPU.uexec uop
             case x of
@@ -196,7 +194,7 @@ cpu inp@CPUIn{..} = do
                     nextInstr
                 Just () -> do
                     load' <- addressing teardown
-                    maybe nextInstr (assign phase . Executing load') $ succIdx i
+                    maybe nextInstr (assign phase . Executing instr load') $ succIdx i
 
 nextInstr :: M ()
 nextInstr = do
@@ -229,3 +227,8 @@ latchAddr :: Addr -> M ()
 latchAddr addr = do
     addrLatch .= Just addr
     addrOut .:= Right addr
+
+microcodeFor :: Value -> Microcode
+microcodeFor = (microcodeROM !!)
+  where
+    microcodeROM = $(TH.lift $ map (microcode . decodeInstr . bitCoerce) $ indicesI @256)
