@@ -85,7 +85,7 @@ pop2 =
     step (IJust IncrSP) ToAddrBuf INothing
 
 type MicroOp = (MicroInstr, Maybe (Either OutAddr InAddr))
-type MicroLen = 9
+type MicroLen = 6
 type Microcode = (Maybe InAddr, Vec MicroLen MicroOp)
 
 mc :: (KnownNat k, (1 + n + k) ~ MicroLen) => MicroSteps (1 + n) pre post -> Microcode
