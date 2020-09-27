@@ -32,7 +32,7 @@ data Phase
     = Init
     | Halted
     | Fetching Bool
-    | Executing (Index MicroLen)
+    | Executing Bool (Index MicroLen)
     deriving (Show, Generic, NFDataX)
 
 declareBareB [d|
@@ -120,14 +120,9 @@ instance MCPU.MicroState CPUState where
     {-# INLINE addrBuf #-}
     addrBuf = addrBuf
 
-instance MCPU.MicroM CPUState (MaybeT (ReaderT (Maybe Value) M)) where
-    {-# INLINE loadIn #-}
-    loadIn = do
-        x <- lift . lift . readFrom =<< ask
-        valueBuf .= x
-
+instance MCPU.MicroM CPUState (MaybeT M) where
     {-# INLINE nextInstr #-}
-    nextInstr = mzero -- lift nextInstr >> mzero
+    nextInstr = mzero
 
     {-# INLINE allowInterrupts #-}
     allowInterrupts = lift . assign allowInterrupts
@@ -187,27 +182,35 @@ cpu inp@CPUIn{..} = do
             instr <- {- traceState $ -} decodeInstr <$> if interrupting then readByte inp else fetch inp
             instrBuf .= instr
             let (setup, _) = microcode instr
-            traverse_ (addressing . Right) setup
-            phase .= Executing 0
-        Executing i -> do
+            load <- addressing (Right <$> setup)
+            phase .= Executing load 0
+        Executing load i -> do
+            when load $ assign valueBuf =<< readFrom dataIn
+
             instr <- use instrBuf
             let (uop, teardown) = snd (microcode instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
-            x <- runReaderT (runMaybeT $ MCPU.uexec uop) dataIn
+            x <- runMaybeT $ MCPU.uexec uop
             case x of
                 Nothing -> do
                     nextInstr
                 Just () -> do
-                    traverse_ addressing teardown
-                    maybe nextInstr (assign phase . Executing) $ succIdx i
+                    load' <- addressing teardown
+                    maybe nextInstr (assign phase . Executing load') $ succIdx i
 
 nextInstr :: M ()
 nextInstr = do
     latchAddr =<< use pc
     phase .= Fetching False
 
-addressing :: Either Addressing Addressing -> M ()
-addressing = either (doWrite <=< MCPU.targetAddress) (doRead <=< MCPU.targetAddress)
+addressing :: Maybe (Either Addressing Addressing) -> M Bool
+addressing Nothing = return False
+addressing (Just (Left write)) = do
+    doWrite =<< MCPU.targetAddress write
+    return False
+addressing (Just (Right read)) = do
+    doRead =<< MCPU.targetAddress read
+    return True
 
 doWrite :: Either Port Addr -> M ()
 doWrite target = do

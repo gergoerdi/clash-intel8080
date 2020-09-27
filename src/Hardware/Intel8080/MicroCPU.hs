@@ -31,7 +31,6 @@ class MicroState s where
     addrBuf :: Lens' s Addr
 
 class (MicroState s, MonadState s m) => MicroM s m | m -> s where
-    loadIn :: m ()
     nextInstr :: m ()
     allowInterrupts :: Bool -> m ()
 
@@ -49,7 +48,7 @@ evalCond :: (MicroM s m) => Cond -> m Bool
 evalCond (Cond f target) = uses (flag f) (== target)
 
 {-# INLINE uexec #-}
-uexec :: (MicroM s m) => Effect -> m ()
+uexec :: (MicroM s m) => MicroInstr -> m ()
 uexec (Get r) = assign valueBuf =<< use (reg r)
 uexec (Set r) = assign (reg r) =<< use valueBuf
 uexec FromPC = assign valueBuf =<< twistFrom pc
@@ -58,7 +57,6 @@ uexec ToAddrBuf = twistTo addrBuf =<< use valueBuf
 uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
 uexec (Swap2 rp) = swap addrBuf (regPair rp)
 uexec Jump = assign pc =<< use addrBuf
-uexec ReadMem = loadIn
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed nextInstr

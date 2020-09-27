@@ -63,7 +63,6 @@ instance MCPU.MicroState S where
     addrBuf = ureg2
 
 instance (Monad m) => MCPU.MicroM S (CPU m) where
-    loadIn = return ()
     nextInstr = mzero
     allowInterrupts = assign allowInterrupts
 
