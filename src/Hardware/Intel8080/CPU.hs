@@ -229,6 +229,4 @@ latchAddr addr = do
     addrOut .:= Right addr
 
 microcodeFor :: Value -> Microcode
-microcodeFor = (microcodeROM !!)
-  where
-    microcodeROM = $(TH.lift $ map (microcode . decodeInstr . bitCoerce) $ indicesI @256)
+microcodeFor = asyncRom $(TH.lift $ map (microcode . decodeInstr . bitCoerce) $ indicesI @256)
