@@ -5,6 +5,7 @@ import Clash.Prelude
 
 import Hardware.Intel8080
 import Hardware.Intel8080.Steps
+import Data.Wedge
 
 data InAddr
     = FromPtr
@@ -85,13 +86,13 @@ pop2 =
     step (IJust IncrSP) ToAddrBuf INothing >++>
     step (IJust IncrSP) ToAddrBuf INothing
 
-type MicroOp = (MicroInstr, Maybe (Either OutAddr InAddr))
+type MicroOp = (MicroInstr, Wedge OutAddr InAddr)
 type MicroLen = 6
 type Microcode = (Maybe InAddr, Vec MicroLen MicroOp)
 
 mc :: (KnownNat k, (1 + n + k) ~ MicroLen) => MicroSteps (1 + n) pre post -> Microcode
 mc ops = let (first, ops') = stepsOf ops
-         in (first, ops' ++ repeat (When Nothing, Nothing))
+         in (first, ops' ++ repeat (When Nothing, Nowhere))
 
 evalSrc
     :: (KnownNat k, KnownNat k', ((1 + n) + k) ~ MicroLen, ((1 + (1 + n)) + k') ~ MicroLen)

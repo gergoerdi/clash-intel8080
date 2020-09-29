@@ -21,6 +21,7 @@ import Control.Monad.Trans.Maybe
 import Control.Lens hiding (Index)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
+import Data.Wedge
 
 import Barbies
 import Barbies.Bare
@@ -181,7 +182,7 @@ cpu inp@CPUIn{..} = do
         Fetching interrupting -> do
             instr <- {- traceState $ -} if interrupting then readByte inp else fetch inp
             let (setup, _) = microcodeFor instr
-            load <- addressing (Right <$> setup)
+            load <- addressing (wedgeRight setup)
             phase .= Executing instr load 0
         Executing instr load i -> do
             when load $ assign valueBuf =<< readFrom dataIn
@@ -201,12 +202,12 @@ nextInstr = do
     latchAddr =<< use pc
     phase .= Fetching False
 
-addressing :: Maybe (Either OutAddr InAddr) -> M Bool
-addressing Nothing = return False
-addressing (Just (Left write)) = do
+addressing :: Wedge OutAddr InAddr -> M Bool
+addressing Nowhere = return False
+addressing (Here write) = do
     doWrite =<< MCPU.outAddr write
     return False
-addressing (Just (Right read)) = do
+addressing (There read) = do
     doRead =<< MCPU.inAddr read
     return True
 

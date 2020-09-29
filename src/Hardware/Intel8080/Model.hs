@@ -13,8 +13,10 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Data.Foldable (traverse_)
+import Data.Bifoldable (bitraverse_)
 import Control.Monad.Extra (whenM)
 import Control.Lens hiding (index)
+import Data.Wedge
 
 import Debug.Trace
 import Text.Printf
@@ -98,12 +100,12 @@ interrupt instr = whenM (use allowInterrupts) $ do
 exec :: (Monad m) => Instr -> CPU m ()
 exec instr = do
     let (setup, uops) = microcode instr
-    traverse_ (addressing . Right) setup
+    addressing $ wedgeRight setup
     -- liftIO $ print (instr, uops)
     mapM_ ustep uops
 
-addressing :: (Monad m) => Either OutAddr InAddr -> CPU m ()
-addressing = either (doWrite <=< MCPU.outAddr) (doRead <=< MCPU.inAddr)
+addressing :: (Monad m) => Wedge OutAddr InAddr -> CPU m ()
+addressing = bitraverse_ (doWrite <=< MCPU.outAddr) (doRead <=< MCPU.inAddr)
 
 doWrite :: (Monad m) => Either Port Addr -> CPU m ()
 doWrite target = either writePort poke target =<< use ureg1
@@ -126,4 +128,4 @@ doRead target = assign ureg1 =<< either readPort peekByte target
 ustep :: (Monad m) => MicroOp -> CPU m ()
 ustep (effect, post) = do
     MCPU.uexec effect
-    traverse_ addressing post
+    addressing post

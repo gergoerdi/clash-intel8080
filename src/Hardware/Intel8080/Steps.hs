@@ -7,6 +7,7 @@
 module Hardware.Intel8080.Steps where
 
 import Clash.Prelude
+import Data.Wedge
 
 data IMaybe (isJust :: Bool) a where
     INothing :: IMaybe False a
@@ -20,40 +21,40 @@ type family Compat post1 pre2 where
     Compat True True = (TypeError (Text "Conflict between postamble and next preamble"), Impossible)
     Compat post1 pre2 = ()
 
-data Step b1 a b2 pre post where
-    Step :: IMaybe pre b1 -> a -> IMaybe post b2 -> Step b1 a b2 pre post
+data Step pre a post hasPre hasPost where
+    Step :: IMaybe hasPre pre -> a -> IMaybe hasPost post -> Step pre a post hasPre hasPost
 
-data Steps b1 a b2 (n :: Nat) pre post where
-    One :: Step b1 a b2 pre post -> Steps b1 a b2 1 pre post
-    More :: (Compat post1 pre2) => Step b1 a b2 pre1 post1 -> Steps b1 a b2 n pre2 post2 -> Steps b1 a b2 (1 + n) pre1 post2
+data Steps pre a post (n :: Nat) hasPre hasPost where
+    One :: Step pre a post hasPre hasPost -> Steps pre a post 1 hasPre hasPost
+    More :: (Compat hasPost1 hasPre2) => Step pre a post hasPre1 hasPost1 -> Steps pre a post n hasPre2 hasPost2 -> Steps pre a post (1 + n) hasPre1 hasPost2
 
-step :: IMaybe pre b1 -> a -> IMaybe post b2 -> Steps b1 a b2 1 pre post
-step pre x post = One $ Step pre x post
+step :: IMaybe hasPre pre -> a -> IMaybe hasPost post -> Steps pre a post 1 hasPre hasPost
+step hasPre x hasPost = One $ Step hasPre x hasPost
 
 infixr 5 >++>
 (>++>)
-    :: (Compat post1 pre2)
-    => Steps b1 a b2 n pre1 post1
-    -> Steps b1 a b2 k pre2 post2
-    -> Steps b1 a b2 (n + k) pre1 post2
+    :: (Compat hasPost1 hasPre2)
+    => Steps pre a post n hasPre1 hasPost1
+    -> Steps pre a post k hasPre2 hasPost2
+    -> Steps pre a post (n + k) hasPre1 hasPost2
 One x >++> ys = More x ys
 More x xs >++> ys = More x $ xs >++> ys
 
-deriving instance (Show a, Show b1, Show b2) => Show (Step b1 a b2 pre post)
-instance (Show a, Show b1, Show b2) => Show (Steps b1 a b2 pre n post) where
+deriving instance (Show a, Show pre, Show post) => Show (Step pre a post hasPre hasPost)
+instance (Show a, Show pre, Show post) => Show (Steps pre a post hasPre n hasPost) where
    show (One p)  = show p <> "\n"
    show (More a b) = show a <> show b
 
-stepsOf :: Steps b1 a b2 n pre post -> (Maybe b1, Vec n (a, Maybe (Either b2 b1)))
-stepsOf xs = case go xs of (pre, ys) -> (from pre, ys)
+stepsOf :: Steps pre a post n hasPre hasPost -> (Maybe pre, Vec n (a, Wedge post pre))
+stepsOf xs = case go xs of (hasPre, ys) -> (from hasPre, ys)
   where
-    go :: Steps b1 a b2 n pre post -> (IMaybe pre b1, Vec n (a, Maybe (Either b2 b1)))
-    go (One (Step pre x post)) = (pre, singleton (x, Left <$> from post))
-    go (More (Step pre x post) xs) = case go xs of (pre', ys) -> (pre, (x, combine post pre') :> ys)
+    go :: Steps pre a post n hasPre hasPost -> (IMaybe hasPre pre, Vec n (a, Wedge post pre))
+    go (One (Step hasPre x hasPost)) = (hasPre, singleton (x, wedgeLeft $ from hasPost))
+    go (More (Step hasPre x hasPost) xs) = case go xs of (hasPre', ys) -> (hasPre, (x, combine hasPost hasPre') :> ys)
 
-    combine :: (Compat post1 pre2) => IMaybe post1 b2 -> IMaybe pre2 b1 -> Maybe (Either b2 b1)
-    combine INothing post = Right <$> from post
-    combine pre INothing = Left <$> from pre
+    combine :: (Compat hasPost1 hasPre2) => IMaybe hasPost1 post -> IMaybe hasPre2 pre -> Wedge post pre
+    combine INothing pre    = wedgeRight $ from pre
+    combine post INothing   = wedgeLeft $ from post
     combine IJust{} IJust{} = impossible
 
     from :: IMaybe free m -> Maybe m
