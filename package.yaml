@@ -30,7 +30,6 @@ dependencies:
   - containers
   - array
   - lens
-  - singletons
   - extra
   - template-haskell
 

@@ -7,7 +7,6 @@
 module Hardware.Intel8080.Steps where
 
 import Clash.Prelude
-import Data.Singletons.Prelude.Bool
 
 data IMaybe (isJust :: Bool) a where
     INothing :: IMaybe False a
