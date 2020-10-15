@@ -25,7 +25,7 @@ import Data.ByteString.Lazy (ByteString)
 
 run :: IOArray Addr Value -> IO ByteString
 run arr = do
-    let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState{ _pc = 0x0100 }, Nothing))
+    let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState 0x0100, Nothing))
 
     fmap toLazyByteString . execWriterT $ runMaybeT $ runSim $ forever $ do
         i <- use _1

@@ -42,7 +42,7 @@ run arr =
                 tell $ word8 . fromIntegral $ value
         return 0xff
 
-    s0 = mkS{ _pc = 0x0100 }
+    s0 = mkState 0x0100
 
 main :: IO ()
 main = do

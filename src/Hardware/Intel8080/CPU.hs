@@ -12,7 +12,7 @@ import RetroClash.Barbies
 import Hardware.Intel8080
 import Hardware.Intel8080.Decode
 import Hardware.Intel8080.Microcode
-import qualified Hardware.Intel8080.MicroCPU as MCPU
+import Hardware.Intel8080.MicroCPU
 
 import Control.Monad.State
 import Control.Monad.Reader
@@ -46,28 +46,19 @@ declareBareB [d|
 
 data CPUState = CPUState
     { _phase :: Phase
-    , _pc, _sp :: Addr
-    , _registers :: Vec 8 Value
-    , _allowInterrupts :: Bool
     , _interrupted :: Bool
-    , _valueBuf :: Value
-    , _addrBuf :: Addr
     , _addrLatch :: Maybe Addr
+    , _microState :: MicroState
     }
     deriving (Show, Generic, NFDataX)
 makeLenses ''CPUState
 
-initState :: CPUState
-initState = CPUState
+initState :: Addr -> CPUState
+initState pc0 = CPUState
     { _phase = Init
-    , _pc = 0x0000
-    , _sp = 0x0000
-    , _registers = replace 1 0x02 $ pure 0x00
-    , _allowInterrupts = False
     , _interrupted = False
-    , _valueBuf = 0x00
-    , _addrBuf = 0x0000
     , _addrLatch = Nothing
+    , _microState = mkMicroState pc0
     }
 
 declareBareB [d|
@@ -79,7 +70,7 @@ declareBareB [d|
 makeLenses ''CPUOut
 
 defaultOut :: CPUState -> Pure CPUOut
-defaultOut CPUState{..} = CPUOut{..}
+defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
   where
     _addrOut = Right $ fromMaybe _addrBuf _addrLatch
     _dataOut = Nothing
@@ -88,12 +79,12 @@ defaultOut CPUState{..} = CPUOut{..}
 type M = MaybeT (CPUM CPUState CPUOut)
 
 pretty :: M String
-pretty = do
+pretty = zoom microState $ do
     pc <- use pc
     sp <- use sp
     valueBuf <- use valueBuf
     addrBuf <- use addrBuf
-    ~[bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
+    ~[bc, de, hl, af] <- mapM (use . regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
     return $ unlines
       [ printf "IR:         PC: 0x%04x  SP: 0x%04x  U1:   0x%02x  U2: 0x%04x" pc sp valueBuf addrBuf
       , printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x" bc de hl af
@@ -105,35 +96,16 @@ traceState act = do
     x <- act
     trace (unlines [s, show x]) $ return x
 
-instance MCPU.MicroState CPUState where
-    {-# INLINE reg #-}
-    reg r = registers . lens (!! r) (\s v -> replace r v s)
-
-    {-# INLINE pc #-}
-    pc = pc
-
-    {-# INLINE sp #-}
-    sp = sp
-
-    {-# INLINE valueBuf #-}
-    valueBuf = valueBuf
-
-    {-# INLINE addrBuf #-}
-    addrBuf = addrBuf
-
-    {-# INLINE allowInterrupts #-}
-    allowInterrupts = allowInterrupts
-
 latchInterrupt :: Pure CPUIn -> M Bool
 latchInterrupt CPUIn{..} = do
-    allowed <- use allowInterrupts
+    allowed <- use (microState.allowInterrupts)
     when (interruptRequest && allowed) $ interrupted .= True
     use interrupted
 
 acceptInterrupt :: M ()
 acceptInterrupt = do
     -- trace (show ("Interrupt accepted", pc)) $ return ()
-    allowInterrupts .= False
+    microState.allowInterrupts .= False
     interrupted .= False
     interruptAck .:= True
 
@@ -151,7 +123,7 @@ readFrom = maybe retry ack
 fetch :: Pure CPUIn -> M Value
 fetch inp = do
     x <- readByte inp
-    pc += 1
+    microState.pc += 1
     return x
 
 cpuMachine :: Pure CPUIn -> State CPUState (Pure CPUOut)
@@ -181,11 +153,11 @@ cpu inp@CPUIn{..} = do
             load <- addressing (wedgeRight setup)
             phase .= Executing instr load 0
         Executing instr load i -> do
-            when load $ assign valueBuf =<< readFrom dataIn
+            when load $ assign (microState.valueBuf) =<< readFrom dataIn
 
             let (uop, teardown) = snd (microcodeFor instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
-            x <- runMaybeT $ MCPU.uexec uop
+            x <- runMaybeT $ zoom microState $ uexec uop
             case x of
                 Nothing -> do
                     nextInstr
@@ -195,22 +167,22 @@ cpu inp@CPUIn{..} = do
 
 nextInstr :: M ()
 nextInstr = do
-    latchAddr =<< use pc
+    latchAddr =<< use (microState.pc)
     phase .= Fetching False
 
 addressing :: Wedge OutAddr InAddr -> M Bool
 addressing Nowhere = return False
 addressing (Here write) = do
-    doWrite =<< MCPU.outAddr write
+    doWrite =<< zoom microState (outAddr write)
     return False
 addressing (There read) = do
-    doRead =<< MCPU.inAddr read
+    doRead =<< zoom microState (inAddr read)
     return True
 
 doWrite :: Either Port Addr -> M ()
 doWrite target = do
     addrOut .:= target
-    value <- use valueBuf
+    value <- use (microState.valueBuf)
     dataOut .:= Just value
 
 doRead :: Either Port Addr -> M ()

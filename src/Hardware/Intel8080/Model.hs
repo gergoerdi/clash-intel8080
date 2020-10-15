@@ -6,7 +6,7 @@ module Hardware.Intel8080.Model where
 import Hardware.Intel8080
 import Hardware.Intel8080.Decode
 import Hardware.Intel8080.Microcode
-import qualified Hardware.Intel8080.MicroCPU as MCPU
+import Hardware.Intel8080.MicroCPU as MCPU
 
 import Clash.Prelude hiding (lift)
 import Control.Monad.Reader
@@ -21,26 +21,8 @@ import Data.Wedge
 import Debug.Trace
 import Text.Printf
 
-data S = MkS
-    { _pc :: Addr
-    , _sp :: Addr
-    , _allowInterrupts :: Bool
-    , _registers :: Vec 8 Value
-    , _ureg1 :: Value
-    , _ureg2 :: Addr
-    }
-    deriving (Show)
-makeLenses ''S
-
-mkS :: S
-mkS = MkS{..}
-  where
-    _pc = 0
-    _sp = 0
-    _allowInterrupts = False
-    _registers = replace 1 0x02 $ pure 0x00
-    _ureg1 = 0
-    _ureg2 = 0
+mkState :: Addr -> MicroState
+mkState = mkMicroState
 
 data R m = MkR
     { readMem :: Addr -> m Value
@@ -49,27 +31,19 @@ data R m = MkR
     , outPort :: Port -> Value -> m Value
     }
 
-newtype CPU m a = CPU{ unCPU :: ReaderT (R m) (StateT S m) a }
+newtype CPU m a = CPU{ unCPU :: ReaderT (R m) (StateT MicroState m) a }
     deriving newtype
       (Functor, Applicative, Alternative, Monad, MonadFail,
-       MonadPlus, MonadReader (R m), MonadState S)
+       MonadPlus, MonadReader (R m), MonadState MicroState)
 
 instance MonadTrans CPU where
     lift = CPU . lift . lift
-
-instance MCPU.MicroState S where
-    reg r = registers . lens (!! r) (\s v -> replace r v s)
-    pc = pc
-    sp = sp
-    valueBuf = ureg1
-    addrBuf = ureg2
-    allowInterrupts = allowInterrupts
 
 dumpState :: (MonadIO m) => CPU m ()
 dumpState = do
     pc <- use pc
     sp <- use sp
-    ~[bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
+    ~[bc, de, hl, af] <- mapM (use . regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
     lift . liftIO $ do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
@@ -102,10 +76,10 @@ exec instr = do
     void $ runMaybeT $ mapM_ ustep uops
 
 addressing :: (Monad m) => Wedge OutAddr InAddr -> CPU m ()
-addressing = bitraverse_ (doWrite <=< MCPU.outAddr) (doRead <=< MCPU.inAddr)
+addressing = bitraverse_ (doWrite <=< outAddr) (doRead <=< inAddr)
 
 doWrite :: (Monad m) => Either Port Addr -> CPU m ()
-doWrite target = either writePort poke target =<< use ureg1
+doWrite target = either writePort poke target =<< use valueBuf
   where
     writePort port value = do
         write <- asks outPort
@@ -116,7 +90,7 @@ doWrite target = either writePort poke target =<< use ureg1
         lift $ writeMem addr value
 
 doRead :: (Monad m) => Either Port Addr -> CPU m ()
-doRead target = assign ureg1 =<< either readPort peekByte target
+doRead target = assign valueBuf =<< either readPort peekByte target
   where
     readPort port = do
         read <- asks inPort
@@ -124,5 +98,5 @@ doRead target = assign ureg1 =<< either readPort peekByte target
 
 ustep :: (Monad m) => MicroOp -> MaybeT (CPU m) ()
 ustep (effect, post) = do
-    MCPU.uexec effect
+    uexec effect
     lift $ addressing post

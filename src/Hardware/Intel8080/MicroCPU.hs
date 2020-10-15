@@ -18,18 +18,30 @@ import Control.Monad.State
 import Control.Arrow ((&&&))
 import Control.Monad.Trans.Maybe
 
-class MicroState s where
-    reg :: Reg -> Lens' s Value
+data MicroState = MicroState
+    { _pc, _sp :: Addr
+    , _registers :: Vec 8 Value
+    , _allowInterrupts :: Bool
+    , _valueBuf :: Value
+    , _addrBuf :: Addr
+    }
+    deriving (Show, Generic, NFDataX)
+makeLenses ''MicroState
 
-    pc :: Lens' s Addr
-    sp :: Lens' s Addr
+mkMicroState :: Addr -> MicroState
+mkMicroState pc0 = MicroState{..}
+  where
+    _pc = pc0
+    _sp = 0
+    _allowInterrupts = False
+    _registers = replace 1 0x02 $ pure 0x00
+    _valueBuf = 0
+    _addrBuf = 0
 
-    valueBuf :: Lens' s Value
-    addrBuf :: Lens' s Addr
+reg :: Reg -> Lens' MicroState Value
+reg r = registers . lens (!! r) (\s v -> replace r v s)
 
-    allowInterrupts :: Lens' s Bool
-
-regPair :: (MicroState s) => RegPair -> Lens' s Addr
+regPair :: RegPair -> Lens' MicroState Addr
 regPair (Regs r1 r2) = pairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
 regPair SP = sp
 
@@ -40,14 +52,14 @@ pairL l1 l2 = lens (view l1 &&& view l2) (\s (x,y) -> set l1 x . set l2 y $ s)
 bitL :: (BitPack a, Enum i) => i -> Lens' a Bit
 bitL i = lens (!i) (flip $ replaceBit i)
 
-flag :: (MicroState s) => Flag -> Lens' s Bool
+flag :: Flag -> Lens' MicroState Bool
 flag fl = reg RFlags . bitL fl . iso bitToBool boolToBit
 
-evalCond :: (MicroState s, MonadState s m, Alternative m) => Cond -> m Bool
+evalCond :: (MonadState MicroState m, Alternative m) => Cond -> m Bool
 evalCond (Cond f target) = uses (flag f) (== target)
 
 {-# INLINE uexec #-}
-uexec :: (MicroState s, MonadState s m, Alternative m) => MicroInstr -> m ()
+uexec :: (MonadState MicroState m, Alternative m) => MicroInstr -> m ()
 uexec (Get r) = assign valueBuf =<< use (reg r)
 uexec (Set r) = assign (reg r) =<< use valueBuf
 uexec FromPC = assign valueBuf =<< twistFrom pc
@@ -137,7 +149,7 @@ swap lx ly = do
     lx .= y
     ly .= x
 
-inAddr :: (MicroState s, MonadState s m) => InAddr -> m (Either Port Addr)
+inAddr :: (MonadState MicroState m) => InAddr -> m (Either Port Addr)
 inAddr FromPtr = Right <$> use addrBuf
 inAddr FromPort = do
     (port, _) <- twist <$> use addrBuf
@@ -145,7 +157,7 @@ inAddr FromPort = do
 inAddr IncrPC = Right <$> (use pc <* (pc += 1))
 inAddr IncrSP = Right <$> (use sp <* (sp += 1))
 
-outAddr :: (MicroState s, MonadState s m) => OutAddr -> m (Either Port Addr)
+outAddr :: (MonadState MicroState m) => OutAddr -> m (Either Port Addr)
 outAddr ToPtr = Right <$> use addrBuf
 outAddr ToPort = do
     (port, _) <- twist <$> use addrBuf
