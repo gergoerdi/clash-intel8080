@@ -63,10 +63,10 @@ instance MCPU.MicroState S where
     sp = sp
     valueBuf = ureg1
     addrBuf = ureg2
+    allowInterrupts = allowInterrupts
 
 instance (Monad m) => MCPU.MicroM S (CPU m) where
     nextInstr = mzero
-    allowInterrupts = assign allowInterrupts
 
 dumpState :: (MonadIO m) => CPU m ()
 dumpState = do

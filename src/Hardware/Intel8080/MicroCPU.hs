@@ -19,10 +19,6 @@ import Control.Arrow ((&&&))
 
 class MicroState s where
     reg :: Reg -> Lens' s Value
-    regPair :: RegPair -> Lens' s Addr
-
-    regPair (Regs r1 r2) = pairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
-    regPair SP = sp
 
     pc :: Lens' s Addr
     sp :: Lens' s Addr
@@ -30,9 +26,14 @@ class MicroState s where
     valueBuf :: Lens' s Value
     addrBuf :: Lens' s Addr
 
+    allowInterrupts :: Lens' s Bool
+
+regPair :: (MicroState s) => RegPair -> Lens' s Addr
+regPair (Regs r1 r2) = pairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
+regPair SP = sp
+
 class (MicroState s, MonadState s m) => MicroM s m | m -> s where
     nextInstr :: m ()
-    allowInterrupts :: Bool -> m ()
 
 -- https://stackoverflow.com/a/36525016/477476
 pairL :: Lens' s a -> Lens' s b -> Lens' s (a, b)
@@ -91,7 +92,7 @@ uexec (Compute0 fl fun0) = do
         ConstTrue0 -> const True
         Complement0 -> complement
 uexec (Rst rst) = pc .= fromIntegral rst `shiftL` 3
-uexec (SetInt b) = allowInterrupts b
+uexec (SetInt b) = allowInterrupts .= b
 uexec UpdateFlags = do
     x <- use valueBuf
     flag FZ .= (x == 0)
