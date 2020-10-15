@@ -49,13 +49,13 @@ data R m = MkR
     , outPort :: Port -> Value -> m Value
     }
 
-newtype CPU m a = CPU{ unCPU :: MaybeT (ReaderT (R m) (StateT S m)) a }
+newtype CPU m a = CPU{ unCPU :: ReaderT (R m) (StateT S m) a }
     deriving newtype
       (Functor, Applicative, Alternative, Monad, MonadFail,
        MonadPlus, MonadReader (R m), MonadState S)
 
 instance MonadTrans CPU where
-    lift = CPU . lift . lift . lift
+    lift = CPU . lift . lift
 
 instance MCPU.MicroState S where
     reg r = registers . lens (!! r) (\s v -> replace r v s)
@@ -65,14 +65,11 @@ instance MCPU.MicroState S where
     addrBuf = ureg2
     allowInterrupts = allowInterrupts
 
-instance (Monad m) => MCPU.MicroM S (CPU m) where
-    nextInstr = mzero
-
 dumpState :: (MonadIO m) => CPU m ()
 dumpState = do
     pc <- use pc
     sp <- use sp
-    [bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
+    ~[bc, de, hl, af] <- mapM (use . MCPU.regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
     lift . liftIO $ do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
@@ -102,7 +99,7 @@ exec instr = do
     let (setup, uops) = microcode instr
     addressing $ wedgeRight setup
     -- liftIO $ print (instr, uops)
-    mapM_ ustep uops
+    void $ runMaybeT $ mapM_ ustep uops
 
 addressing :: (Monad m) => Wedge OutAddr InAddr -> CPU m ()
 addressing = bitraverse_ (doWrite <=< MCPU.outAddr) (doRead <=< MCPU.inAddr)
@@ -125,7 +122,7 @@ doRead target = assign ureg1 =<< either readPort peekByte target
         read <- asks inPort
         lift $ read port
 
-ustep :: (Monad m) => MicroOp -> CPU m ()
+ustep :: (Monad m) => MicroOp -> MaybeT (CPU m) ()
 ustep (effect, post) = do
     MCPU.uexec effect
-    addressing post
+    lift $ addressing post

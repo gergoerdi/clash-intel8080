@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, LambdaCase, RankNTypes #-}
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Hardware.Intel8080.MicroCPU where
 
 import Prelude ()
@@ -16,6 +16,7 @@ import Hardware.Intel8080.Microcode
 import Control.Lens hiding (Index)
 import Control.Monad.State
 import Control.Arrow ((&&&))
+import Control.Monad.Trans.Maybe
 
 class MicroState s where
     reg :: Reg -> Lens' s Value
@@ -32,9 +33,6 @@ regPair :: (MicroState s) => RegPair -> Lens' s Addr
 regPair (Regs r1 r2) = pairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
 regPair SP = sp
 
-class (MicroState s, MonadState s m) => MicroM s m | m -> s where
-    nextInstr :: m ()
-
 -- https://stackoverflow.com/a/36525016/477476
 pairL :: Lens' s a -> Lens' s b -> Lens' s (a, b)
 pairL l1 l2 = lens (view l1 &&& view l2) (\s (x,y) -> set l1 x . set l2 y $ s)
@@ -45,11 +43,11 @@ bitL i = lens (!i) (flip $ replaceBit i)
 flag :: (MicroState s) => Flag -> Lens' s Bool
 flag fl = reg RFlags . bitL fl . iso bitToBool boolToBit
 
-evalCond :: (MicroM s m) => Cond -> m Bool
+evalCond :: (MicroState s, MonadState s m, Alternative m) => Cond -> m Bool
 evalCond (Cond f target) = uses (flag f) (== target)
 
 {-# INLINE uexec #-}
-uexec :: (MicroM s m) => MicroInstr -> m ()
+uexec :: (MicroState s, MonadState s m, Alternative m) => MicroInstr -> m ()
 uexec (Get r) = assign valueBuf =<< use (reg r)
 uexec (Set r) = assign (reg r) =<< use valueBuf
 uexec FromPC = assign valueBuf =<< twistFrom pc
@@ -60,7 +58,7 @@ uexec (Swap2 rp) = swap addrBuf (regPair rp)
 uexec Jump = assign pc =<< use addrBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
-    unless passed nextInstr
+    guard passed
 uexec (Compute arg fun updateC updateAC) = do
     c <- use (flag FC)
     x <- case arg of

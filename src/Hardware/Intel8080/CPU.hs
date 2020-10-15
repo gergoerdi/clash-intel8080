@@ -124,10 +124,6 @@ instance MCPU.MicroState CPUState where
     {-# INLINE allowInterrupts #-}
     allowInterrupts = allowInterrupts
 
-instance MCPU.MicroM CPUState (MaybeT M) where
-    {-# INLINE nextInstr #-}
-    nextInstr = mzero
-
 latchInterrupt :: Pure CPUIn -> M Bool
 latchInterrupt CPUIn{..} = do
     allowed <- use allowInterrupts

@@ -25,7 +25,7 @@ run :: IOArray Addr Value -> IO ByteString
 run arr =
     fmap toLazyByteString . execWriterT $ runMaybeT $
     execStateT `flip` s0 $ runReaderT `flip` MkR{..} $
-    forever $ runMaybeT $ unCPU step
+    forever $ unCPU step
   where
     readMem addr = liftIO $ readArray arr addr
     writeMem addr val = liftIO $ writeArray arr addr val
