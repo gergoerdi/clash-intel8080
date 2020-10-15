@@ -34,12 +34,17 @@ mkMicroState pc0 = MicroState{..}
     _pc = pc0
     _sp = 0
     _allowInterrupts = False
-    _registers = replace 1 0x02 $ pure 0x00
+    _registers = repeat 0x00
     _valueBuf = 0
     _addrBuf = 0
 
 reg :: Reg -> Lens' MicroState Value
-reg r = registers . lens (!! r) (\s v -> replace r v s)
+reg r = reg0 . fixup
+  where
+    reg0 = registers . lens (!! r) (\s v -> replace r v s)
+    fixup = case r of
+        RFlags -> lens ((`clearBit` 5) . (`clearBit` 3) . (`setBit` 1)) (\_ -> id)
+        _ -> id
 
 regPair :: RegPair -> Lens' MicroState Addr
 regPair (Regs r1 r2) = pairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
