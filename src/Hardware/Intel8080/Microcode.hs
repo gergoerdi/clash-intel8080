@@ -31,8 +31,8 @@ data UpdateC
     deriving (Show, Eq, Generic, NFDataX, Lift)
 
 data MicroInstr
-    = Get Reg
-    | Set Reg
+    = FromReg Reg
+    | ToReg Reg
     | FromPC
     | FromAddrBuf
     | ToAddrBuf
@@ -103,7 +103,7 @@ evalSrc src k = case src of
     Imm -> mc $
         k (IJust IncrPC)
     LHS (Reg r) -> mc $
-        step INothing (Get r) INothing >++>
+        step INothing (FromReg r) INothing >++>
         k INothing
     LHS (Addr rr) -> mc $
         step INothing (Get2 rr) INothing >++>
@@ -113,9 +113,9 @@ microcode :: Instr -> Microcode
 microcode NOP = mc $ step INothing (When Nothing) INothing
 microcode (INT b) = mc $ step INothing (SetInt b) INothing
 microcode CMA = mc $
-    step INothing (Get RA)                                   INothing >++>
+    step INothing (FromReg RA)                               INothing >++>
     step INothing (Compute ConstFF (Sub False) KeepC KeepAC) INothing >++>
-    step INothing (Set RA)                                   INothing
+    step INothing (ToReg RA)                                 INothing
 microcode CMC = mc $
     step INothing (Compute0 FC Complement0) INothing
 microcode STC = mc $
@@ -123,14 +123,14 @@ microcode STC = mc $
 microcode (ALU fun src) = evalSrc src $ \read ->
     step read     (Compute RegA fun SetC SetAC) INothing >++>
     step INothing UpdateFlags                   INothing >++>
-    step INothing (Set RA)                      INothing
+    step INothing (ToReg RA)                    INothing
 microcode (CMP src) = evalSrc src $ \read ->
     step read     (Compute RegA (Sub False) SetC SetAC) INothing >++>
     step INothing UpdateFlags                           INothing
 microcode (SHROT sr) = mc $
-    step INothing (Get RA)       INothing >++>
+    step INothing (FromReg RA)   INothing >++>
     step INothing (ComputeSR sr) INothing >++>
-    step INothing (Set RA)       INothing
+    step INothing (ToReg RA)     INothing
 microcode (RST irq) = mc $
     pushPC >++>
     step INothing (Rst irq) INothing
@@ -159,10 +159,10 @@ microcode (RETIf cond) = mc $
     step INothing Jump               INothing
 microcode LDA = mc $
     imm2 >++>
-    step (IJust FromPtr) (Set RA) INothing
+    step (IJust FromPtr) (ToReg RA) INothing
 microcode STA = mc $
     imm2 >++>
-    step INothing (Get RA) (IJust ToPtr)
+    step INothing (FromReg RA) (IJust ToPtr)
 microcode (DCX rr) = mc $
     step INothing (Get2 rr)             INothing >++>
     step INothing (Compute2 Dec2 KeepC) INothing >++>
@@ -180,24 +180,24 @@ microcode (INR (Addr rr)) = mc $
     step (IJust FromPtr) (Compute Const01 (Add False) KeepC SetAC) INothing >++>
     step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (INR (Reg r)) = mc $
-    step INothing (Get r)                                   INothing >++>
+    step INothing (FromReg r)                               INothing >++>
     step INothing (Compute Const01 (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
-    step INothing (Set r)                                   INothing
+    step INothing (ToReg r)                                 INothing
 microcode (DCR (Addr rr)) = mc $
     step INothing        (Get2 rr)                                 INothing >++>
     step (IJust FromPtr) (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
     step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (DCR (Reg r)) = mc $
-    step INothing (Get r)                                   INothing >++>
+    step INothing (FromReg r)                               INothing >++>
     step INothing (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
-    step INothing (Set r)                                   INothing
+    step INothing (ToReg r)                                 INothing
 microcode DAA = mc $
-    step INothing (Get RA)    INothing >++>
-    step INothing FixupBCD    INothing >++>
-    step INothing UpdateFlags INothing >++>
-    step INothing (Set RA)    INothing
+    step INothing (FromReg RA) INothing >++>
+    step INothing FixupBCD     INothing >++>
+    step INothing UpdateFlags  INothing >++>
+    step INothing (ToReg RA)   INothing
 microcode (LXI rr) = mc $
     imm2 >++>
     step INothing (Swap2 rr) INothing
@@ -209,14 +209,14 @@ microcode SPHL = mc $
     step INothing (Swap2 SP) INothing
 microcode LHLD = mc $
     imm2 >++>
-    step (IJust FromPtr) (Set RL)              INothing >++>
+    step (IJust FromPtr) (ToReg RL)            INothing >++>
     step INothing        (Compute2 Inc2 KeepC) INothing >++>
-    step (IJust FromPtr) (Set RH)              INothing
+    step (IJust FromPtr) (ToReg RH)            INothing
 microcode SHLD = mc $
     imm2 >++>
-    step INothing (Get RL)              (IJust ToPtr) >++>
+    step INothing (FromReg RL)          (IJust ToPtr) >++>
     step INothing (Compute2 Inc2 KeepC) INothing      >++>
-    step INothing (Get RH)              (IJust ToPtr)
+    step INothing (FromReg RH)          (IJust ToPtr)
 microcode XTHL = mc $
     pop2 >++>
     step INothing (Swap2 RHL) INothing >++>
@@ -228,7 +228,7 @@ microcode (POP rr) = mc $
     pop2 >++>
     step INothing (Swap2 rr) INothing
 microcode (MOV (Reg r) src) = evalSrc src $ \read ->
-    step read (Set r) INothing
+    step read (ToReg r) INothing
 microcode (MOV (Addr rr) src) = evalSrc src $ \read ->
     step read (Get2 rr) (IJust ToPtr)
 microcode XCHG = mc $
@@ -236,11 +236,11 @@ microcode XCHG = mc $
     step INothing (Swap2 RDE) INothing >++>
     step INothing (Swap2 RHL) INothing
 microcode IN = mc $
-    step (IJust IncrPC)   ToAddrBuf INothing >++>
-    step (IJust FromPort) (Set RA)  INothing
+    step (IJust IncrPC)   ToAddrBuf  INothing >++>
+    step (IJust FromPort) (ToReg RA) INothing
 microcode OUT = mc $
-    step (IJust IncrPC) ToAddrBuf INothing >++>
-    step INothing       (Get RA)  (IJust ToPort)
+    step (IJust IncrPC) ToAddrBuf    INothing >++>
+    step INothing       (FromReg RA) (IJust ToPort)
 microcode HLT = mc $
     step INothing Halt INothing
 -- microcode instr = errorX $ show instr

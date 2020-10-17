@@ -65,8 +65,8 @@ evalCond (Cond f target) = uses (flag f) (== target)
 
 {-# INLINE uexec #-}
 uexec :: (MonadState MicroState m, Alternative m) => MicroInstr -> m ()
-uexec (Get r) = assign valueBuf =<< use (reg r)
-uexec (Set r) = assign (reg r) =<< use valueBuf
+uexec (FromReg r) = assign valueBuf =<< use (reg r)
+uexec (ToReg r) = assign (reg r) =<< use valueBuf
 uexec FromPC = assign valueBuf =<< twistFrom pc
 uexec FromAddrBuf = assign valueBuf =<< twistFrom addrBuf
 uexec ToAddrBuf = twistTo addrBuf =<< use valueBuf
