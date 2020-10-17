@@ -57,17 +57,17 @@ bitL :: (BitPack a, Enum i) => i -> Lens' a Bit
 bitL i = lens (!i) (flip $ replaceBit i)
 
 flag :: Flag -> Lens' MicroState Bool
-flag fl = reg RFlags . bitL fl . iso bitToBool boolToBit
+flag flg = reg RFlags . bitL flg . iso bitToBool boolToBit
 
-evalCond :: (MonadState MicroState m, Alternative m) => Cond -> m Bool
-evalCond (Cond f target) = uses (flag f) (== target)
+evalCond :: (MonadState MicroState m) => Cond -> m Bool
+evalCond (Cond flg target) = uses (flag flg) (== target)
 
 {-# INLINE uexec #-}
 uexec :: (MonadState MicroState m, Alternative m) => MicroInstr -> m ()
 uexec (FromReg r) = assign valueBuf =<< use (reg r)
 uexec (ToReg r) = assign (reg r) =<< use valueBuf
-uexec FromPC = assign valueBuf =<< twistFrom pc
 uexec FromAddrBuf = assign valueBuf =<< twistFrom addrBuf
+uexec FromPC = assign valueBuf =<< twistFrom pc
 uexec ToAddrBuf = twistTo addrBuf =<< use valueBuf
 uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
 uexec (Swap2 rp) = swap addrBuf (regPair rp)
@@ -97,8 +97,8 @@ uexec (Compute2 fun) = do
     addrBuf %= case fun of
         Inc2 -> (+ 1)
         Dec2 -> subtract 1
-uexec (Compute0 fl fun0) = do
-    flag fl %= case fun0 of
+uexec (Compute0 flg fun0) = do
+    flag flg %= case fun0 of
         ConstTrue0 -> const True
         ConstFalse0 -> const False
         Complement0 -> complement

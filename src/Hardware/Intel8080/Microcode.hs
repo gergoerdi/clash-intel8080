@@ -71,18 +71,22 @@ data ALU0
 
 type MicroSteps = Steps InAddr MicroInstr OutAddr
 
+imm2 :: MicroSteps 2 True False
 imm2 =
     step (IJust IncrPC) ToAddrBuf INothing >++>
     step (IJust IncrPC) ToAddrBuf INothing
 
+push2 :: MicroSteps 2 False True
 push2 =
     step INothing FromAddrBuf (IJust DecrSP) >++>
     step INothing FromAddrBuf (IJust DecrSP)
 
+pushPC :: MicroSteps 2 False True
 pushPC =
     step INothing FromPC (IJust DecrSP) >++>
     step INothing FromPC (IJust DecrSP)
 
+pop2 :: MicroSteps 2 True False
 pop2 =
     step (IJust IncrSP) ToAddrBuf INothing >++>
     step (IJust IncrSP) ToAddrBuf INothing
