@@ -75,7 +75,7 @@ uexec Jump = assign pc =<< use addrBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     guard passed
-uexec (Compute arg fun updateC updateAC) = do
+uexec (Compute fun arg updateC updateAC) = do
     c <- use (flag FC)
     x <- case arg of
         RegA -> use (reg RA)
