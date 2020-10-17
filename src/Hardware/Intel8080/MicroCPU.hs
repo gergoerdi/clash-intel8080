@@ -79,6 +79,7 @@ uexec (Compute fun arg updateC updateAC) = do
     c <- use (flag FC)
     x <- case arg of
         RegA -> use (reg RA)
+        AddrLo -> truncateB <$> use addrBuf
         Const01 -> pure 0x01
         ConstFF -> pure 0xff
     y <- use valueBuf
@@ -92,18 +93,14 @@ uexec (ComputeSR sr) = do
     let (c', result) = shiftRotateALU sr c x
     flag FC .= c'
     valueBuf .= result
-uexec (Compute2 fun2 updateC) = do
-    arg <- case fun2 of
-        Inc2 -> return 0x0001
-        Dec2 -> return 0xffff
-        AddHL -> use (regPair RHL)
-    x <- use addrBuf
-    let (c', x') = bitCoerce $ x `add` arg
-    addrBuf .= x'
-    when (updateC == SetC) $ flag FC .= c'
+uexec (Compute2 fun) = do
+    addrBuf %= case fun of
+        Inc2 -> (+ 1)
+        Dec2 -> subtract 1
 uexec (Compute0 fl fun0) = do
     flag fl %= case fun0 of
         ConstTrue0 -> const True
+        ConstFalse0 -> const False
         Complement0 -> complement
 uexec (Rst rst) = pc .= fromIntegral rst `shiftL` 3
 uexec (SetInt b) = allowInterrupts .= b
