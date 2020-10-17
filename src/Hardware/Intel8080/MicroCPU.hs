@@ -39,11 +39,10 @@ mkMicroState pc0 = MicroState{..}
     _addrBuf = 0
 
 reg :: Reg -> Lens' MicroState Value
-reg r = reg0 . fixup
+reg r = registers . lens (fixup . (!! r)) (\s v -> replace r v s)
   where
-    reg0 = registers . lens (!! r) (\s v -> replace r v s)
     fixup = case r of
-        RFlags -> lens ((`clearBit` 5) . (`clearBit` 3) . (`setBit` 1)) (\_ -> id)
+        RFlags -> (`clearBit` 5) . (`clearBit` 3) . (`setBit` 1)
         _ -> id
 
 regPair :: RegPair -> Lens' MicroState Addr
