@@ -91,6 +91,9 @@ pop2 =
     step (IJust IncrSP) ToAddrBuf INothing >++>
     step (IJust IncrSP) ToAddrBuf INothing
 
+popPC :: MicroSteps 3 True False
+popPC = pop2 >++> step INothing Jump INothing
+
 type MicroOp = (MicroInstr, Wedge OutAddr InAddr)
 type MicroLen = 8
 type Microcode = (Maybe InAddr, Vec MicroLen MicroOp)
@@ -148,21 +151,19 @@ microcode (JMPIf cond) = mc $
     step INothing (When $ Just cond) INothing >++>
     step INothing Jump               INothing
 microcode CALL = mc $
-    imm2 >++>
+    imm2   >++>
     pushPC >++>
     step INothing Jump INothing
 microcode (CALLIf cond) = mc $
-    imm2 >++>
+    imm2                                      >++>
     step INothing (When $ Just cond) INothing >++>
     pushPC                                    >++>
     step INothing Jump               INothing
 microcode RET = mc $
-    pop2 >++>
-    step INothing Jump INothing
+    popPC
 microcode (RETIf cond) = mc $
     step INothing (When $ Just cond) INothing >++>
-    pop2 >++>
-    step INothing Jump               INothing
+    popPC
 microcode LDA = mc $
     imm2 >++>
     step (IJust FromPtr) (ToReg RA) INothing
