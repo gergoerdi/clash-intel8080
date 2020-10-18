@@ -116,6 +116,7 @@ evalSrc src k = case src of
 
 microcode :: Instr -> Microcode
 microcode NOP = mc $ step INothing (When Nothing) INothing
+microcode HLT = mc $ step INothing Halt INothing
 microcode (INT b) = mc $ step INothing (SetInt b) INothing
 microcode CMA = mc $
     step INothing (FromReg RA)                               INothing >++>
@@ -251,6 +252,4 @@ microcode IN = mc $
 microcode OUT = mc $
     step (IJust IncrPC) ToAddrBuf    INothing >++>
     step INothing       (FromReg RA) (IJust ToPort)
-microcode HLT = mc $
-    step INothing Halt INothing
 -- microcode instr = errorX $ show instr

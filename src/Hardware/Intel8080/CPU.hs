@@ -18,6 +18,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
+import Control.Monad.Except
 import Control.Lens hiding (Index)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
@@ -143,7 +144,7 @@ cpu inp@CPUIn{..} = do
     use phase >>= \case
         Halted -> mzero
         Init -> do
-            nextInstr
+            fetchNext
         Fetching False | interrupted -> do
             acceptInterrupt
             phase .= Fetching True
@@ -157,16 +158,18 @@ cpu inp@CPUIn{..} = do
 
             let (uop, teardown) = snd (microcodeFor instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
-            x <- runMaybeT $ zoom microState $ uexec uop
+            x <- runExceptT $ zoom microState $ uexec uop
             case x of
-                Nothing -> do
-                    nextInstr
-                Just () -> do
+                Left GotoNext -> do
+                    fetchNext
+                Left GotoHalt -> do
+                    phase .= Halted
+                Right () -> do
                     load' <- addressing teardown
-                    maybe nextInstr (assign phase . Executing instr load') $ succIdx i
+                    maybe fetchNext (assign phase . Executing instr load') $ succIdx i
 
-nextInstr :: M ()
-nextInstr = do
+fetchNext :: M ()
+fetchNext = do
     latchAddr =<< use (microState.pc)
     phase .= Fetching False
 

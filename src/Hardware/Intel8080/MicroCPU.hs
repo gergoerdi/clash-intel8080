@@ -17,6 +17,9 @@ import Control.Lens hiding (Index)
 import Control.Monad.State
 import Control.Arrow ((&&&))
 import Control.Monad.Trans.Maybe
+import Control.Monad.Except
+
+data FlowControl = GotoNext | GotoHalt
 
 data MicroState = MicroState
     { _pc, _sp :: Addr
@@ -63,7 +66,8 @@ evalCond :: (MonadState MicroState m) => Cond -> m Bool
 evalCond (Cond flg target) = uses (flag flg) (== target)
 
 {-# INLINE uexec #-}
-uexec :: (MonadState MicroState m, Alternative m) => MicroInstr -> m ()
+uexec :: (MonadState MicroState m, MonadError FlowControl m) => MicroInstr -> m ()
+uexec Halt = throwError GotoHalt
 uexec (FromReg r) = assign valueBuf =<< use (reg r)
 uexec (ToReg r) = assign (reg r) =<< use valueBuf
 uexec FromAddrBuf = assign valueBuf =<< twistFrom addrBuf
@@ -74,7 +78,7 @@ uexec (Swap2 rp) = swap addrBuf (regPair rp)
 uexec Jump = assign pc =<< use addrBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
-    guard passed
+    unless passed $ throwError GotoNext
 uexec (Compute fun arg updateC updateAC) = do
     c <- use (flag FC)
     x <- case arg of

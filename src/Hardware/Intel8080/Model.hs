@@ -11,7 +11,7 @@ import Hardware.Intel8080.MicroCPU as MCPU
 import Clash.Prelude hiding (lift)
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Trans.Maybe
+import Control.Monad.Except
 import Data.Foldable (traverse_)
 import Data.Bifoldable (bitraverse_)
 import Control.Monad.Extra (whenM)
@@ -73,7 +73,7 @@ exec instr = do
     let (setup, uops) = microcode instr
     addressing $ wedgeRight setup
     -- liftIO $ print (instr, uops)
-    void $ runMaybeT $ mapM_ ustep uops
+    void $ runExceptT $ mapM_ ustep uops
 
 addressing :: (Monad m) => Wedge OutAddr InAddr -> CPU m ()
 addressing = bitraverse_ (doWrite <=< outAddr) (doRead <=< inAddr)
@@ -96,7 +96,7 @@ doRead target = assign valueBuf =<< either readPort peekByte target
         read <- asks inPort
         lift $ read port
 
-ustep :: (Monad m) => MicroOp -> MaybeT (CPU m) ()
+ustep :: (Monad m) => MicroOp -> ExceptT FlowControl (CPU m) ()
 ustep (effect, post) = do
     uexec effect
     lift $ addressing post
