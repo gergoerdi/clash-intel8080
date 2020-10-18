@@ -49,12 +49,12 @@ reg r = registers . lens (fixup . (!! r)) (\s v -> replace r v s)
         _ -> id
 
 regPair :: RegPair -> Lens' MicroState Addr
-regPair (Regs r1 r2) = pairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
+regPair (Regs r1 r2) = unsafePairL (reg r1) (reg r2) . iso bitCoerce bitCoerce
 regPair SP = sp
 
 -- https://stackoverflow.com/a/36525016/477476
-pairL :: Lens' s a -> Lens' s b -> Lens' s (a, b)
-pairL l1 l2 = lens (view l1 &&& view l2) (\s (x,y) -> set l1 x . set l2 y $ s)
+unsafePairL :: Lens' s a -> Lens' s b -> Lens' s (a, b)
+unsafePairL l1 l2 = lens (view l1 &&& view l2) (\s (x,y) -> set l1 x . set l2 y $ s)
 
 bitL :: (BitPack a, Enum i) => i -> Lens' a Bit
 bitL i = lens (!i) (flip $ replaceBit i)
