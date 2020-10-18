@@ -73,8 +73,8 @@ uexec (ToReg r) = assign (reg r) =<< use valueBuf
 uexec FromAddrBuf = assign valueBuf =<< twistFrom addrBuf
 uexec FromPC = assign valueBuf =<< twistFrom pc
 uexec ToAddrBuf = twistTo addrBuf =<< use valueBuf
-uexec (Get2 rp) = assign addrBuf =<< use (regPair rp)
-uexec (Swap2 rp) = swap addrBuf (regPair rp)
+uexec (FromReg2 rp) = assign addrBuf =<< use (regPair rp)
+uexec (SwapReg2 rp) = swap addrBuf (regPair rp)
 uexec Jump = assign pc =<< use addrBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond

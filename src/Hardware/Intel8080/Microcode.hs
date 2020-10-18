@@ -36,8 +36,8 @@ data MicroInstr
     | FromPC
     | FromAddrBuf
     | ToAddrBuf
-    | Get2 RegPair
-    | Swap2 RegPair
+    | FromReg2 RegPair
+    | SwapReg2 RegPair
     | Jump
     | When (Maybe Cond)
     | Compute ALU ALUArg UpdateC UpdateAC
@@ -114,7 +114,7 @@ evalSrc src k = case src of
         step INothing (FromReg r) INothing >++>
         k INothing
     LHS (Addr rr) -> mc $
-        step INothing (Get2 rr) INothing >++>
+        step INothing (FromReg2 rr) INothing >++>
         k (IJust FromPtr)
 
 microcode :: Instr -> Microcode
@@ -171,24 +171,24 @@ microcode STA = mc $
     imm2 >++>
     step INothing (FromReg RA) (IJust ToPtr)
 microcode (DCX rr) = mc $
-    step INothing (Get2 rr)       INothing >++>
+    step INothing (FromReg2 rr)   INothing >++>
     step INothing (Compute2 Dec2) INothing >++>
-    step INothing (Swap2 rr)      INothing
+    step INothing (SwapReg2 rr)   INothing
 microcode (INX rr) = mc $
-    step INothing (Get2 rr)       INothing >++>
+    step INothing (FromReg2 rr)       INothing >++>
     step INothing (Compute2 Inc2) INothing >++>
-    step INothing (Swap2 rr)      INothing
+    step INothing (SwapReg2 rr)   INothing
 microcode (DAD rr) = mc $
-    step INothing (Get2 rr)            INothing                     >++>
+    step INothing (FromReg2 rr)        INothing                     >++>
     step INothing (FromReg RL)         INothing                     >++>
     step INothing (Compute (Add False) AddrLo SetC KeepAC) INothing >++>
     step INothing ToAddrBuf            INothing                     >++>
     step INothing (FromReg RH)         INothing                     >++>
     step INothing (Compute (Add True)  AddrLo SetC KeepAC) INothing >++>
     step INothing ToAddrBuf            INothing                     >++>
-    step INothing (Swap2 RHL)          INothing
+    step INothing (SwapReg2 RHL)       INothing
 microcode (INR (Addr rr)) = mc $
-    step INothing        (Get2 rr)                                 INothing >++>
+    step INothing        (FromReg2 rr)                             INothing >++>
     step (IJust FromPtr) (Compute (Add False) Const01 KeepC SetAC) INothing >++>
     step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (INR (Reg r)) = mc $
@@ -197,7 +197,7 @@ microcode (INR (Reg r)) = mc $
     step INothing UpdateFlags                               INothing >++>
     step INothing (ToReg r)                                 INothing
 microcode (DCR (Addr rr)) = mc $
-    step INothing        (Get2 rr)                                 INothing >++>
+    step INothing        (FromReg2 rr)                             INothing >++>
     step (IJust FromPtr) (Compute (Add False) ConstFF KeepC SetAC) INothing >++>
     step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (DCR (Reg r)) = mc $
@@ -212,13 +212,13 @@ microcode DAA = mc $
     step INothing (ToReg RA)   INothing
 microcode (LXI rr) = mc $
     imm2 >++>
-    step INothing (Swap2 rr) INothing
+    step INothing (SwapReg2 rr) INothing
 microcode PCHL = mc $
-    step INothing (Get2 RHL) INothing >++>
-    step INothing Jump       INothing
+    step INothing (FromReg2 RHL) INothing >++>
+    step INothing Jump           INothing
 microcode SPHL = mc $
-    step INothing (Get2 RHL) INothing >++>
-    step INothing (Swap2 SP) INothing
+    step INothing (FromReg2 RHL) INothing >++>
+    step INothing (SwapReg2 SP)  INothing
 microcode LHLD = mc $
     imm2 >++>
     step (IJust FromPtr) (ToReg RL)      INothing >++>
@@ -231,22 +231,22 @@ microcode SHLD = mc $
     step INothing (FromReg RH)    (IJust ToPtr)
 microcode XTHL = mc $
     pop2 >++>
-    step INothing (Swap2 RHL) INothing >++>
+    step INothing (SwapReg2 RHL) INothing >++>
     push2
 microcode (PUSH rr) = mc $
-    step INothing (Get2 rr) INothing >++>
+    step INothing (FromReg2 rr) INothing >++>
     push2
 microcode (POP rr) = mc $
     pop2 >++>
-    step INothing (Swap2 rr) INothing
+    step INothing (SwapReg2 rr) INothing
 microcode (MOV (Reg r) src) = evalSrc src $ \read ->
     step read (ToReg r) INothing
 microcode (MOV (Addr rr) src) = evalSrc src $ \read ->
-    step read (Get2 rr) (IJust ToPtr)
+    step read (FromReg2 rr) (IJust ToPtr)
 microcode XCHG = mc $
-    step INothing (Get2 RHL)  INothing >++>
-    step INothing (Swap2 RDE) INothing >++>
-    step INothing (Swap2 RHL) INothing
+    step INothing (FromReg2 RHL) INothing >++>
+    step INothing (SwapReg2 RDE) INothing >++>
+    step INothing (SwapReg2 RHL) INothing
 microcode IN = mc $
     step (IJust IncrPC)   ToAddrBuf  INothing >++>
     step (IJust FromPort) (ToReg RA) INothing
