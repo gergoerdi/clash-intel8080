@@ -102,13 +102,13 @@ mc :: (KnownNat k, (n + k) ~ MicroLen) => MicroSteps n pre post -> Microcode
 mc ops = let (first, ops') = stepsOf ops
          in (first, ops' ++ repeat (When Nothing, Nowhere))
 
-evalSrc
+withRHS
     :: (KnownNat k, (n + k) ~ MicroLen)
     => (KnownNat k', (1 + n + k') ~ MicroLen)
     => RHS
     -> (forall pre. IMaybe pre InAddr -> MicroSteps n pre post)
     -> Microcode
-evalSrc src k = case src of
+withRHS rhs k = case rhs of
     Imm -> mc $
         k (IJust IncrPC)
     LHS (Reg r) -> mc $
@@ -130,11 +130,11 @@ microcode CMC = mc $
     step INothing (Compute0 FC Complement0) INothing
 microcode STC = mc $
     step INothing (Compute0 FC ConstTrue0) INothing
-microcode (ALU fun src) = evalSrc src $ \read ->
+microcode (ALU fun src) = withRHS src $ \read ->
     step read     (Compute fun RegA SetC SetAC) INothing >++>
     step INothing UpdateFlags                   INothing >++>
     step INothing (ToReg RA)                    INothing
-microcode (CMP src) = evalSrc src $ \read ->
+microcode (CMP src) = withRHS src $ \read ->
     step read     (Compute (Sub False) RegA SetC SetAC) INothing >++>
     step INothing UpdateFlags                           INothing
 microcode (SHROT sr) = mc $
@@ -240,9 +240,9 @@ microcode (PUSH rr) = mc $
 microcode (POP rr) = mc $
     pop2 >++>
     step INothing (SwapReg2 rr) INothing
-microcode (MOV (Reg r) src) = evalSrc src $ \read ->
+microcode (MOV (Reg r) src) = withRHS src $ \read ->
     step read (ToReg r) INothing
-microcode (MOV (Addr rr) src) = evalSrc src $ \read ->
+microcode (MOV (Addr rr) src) = withRHS src $ \read ->
     step read (FromReg2 rr) (IJust ToPtr)
 microcode XCHG = mc $
     step INothing (FromReg2 RHL) INothing >++>
