@@ -98,14 +98,15 @@ type MicroOp = (MicroInstr, Wedge OutAddr InAddr)
 type MicroLen = 8
 type Microcode = (Maybe InAddr, Vec MicroLen MicroOp)
 
-mc :: (KnownNat k, (1 + n + k) ~ MicroLen) => MicroSteps (1 + n) pre post -> Microcode
+mc :: (KnownNat k, (n + k) ~ MicroLen) => MicroSteps n pre post -> Microcode
 mc ops = let (first, ops') = stepsOf ops
          in (first, ops' ++ repeat (When Nothing, Nowhere))
 
 evalSrc
-    :: (KnownNat k, KnownNat k', ((1 + n) + k) ~ MicroLen, ((1 + (1 + n)) + k') ~ MicroLen)
+    :: (KnownNat k, (n + k) ~ MicroLen)
+    => (KnownNat k', (1 + n + k') ~ MicroLen)
     => RHS
-    -> (forall pre. IMaybe pre InAddr -> MicroSteps (1 + n) pre post)
+    -> (forall pre. IMaybe pre InAddr -> MicroSteps n pre post)
     -> Microcode
 evalSrc src k = case src of
     Imm -> mc $
