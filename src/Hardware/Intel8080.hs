@@ -51,7 +51,7 @@ data RHS
     | LHS LHS
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
-data ALU = Add Bool | Sub Bool | And | Or | XOr
+data ALU = Add Bool | Sub Bool | And | Or | XOr | BCD
     deriving (Eq, Ord, Show, Generic, NFDataX, Lift)
 
 data ShiftRotate = Shift | Rotate
@@ -76,7 +76,6 @@ data Instr
     | INX RegPair
     | DCX RegPair
     | DAD RegPair
-    | DAA
     | CMA
     | CMC
     | STC
@@ -108,6 +107,7 @@ pattern SBC rhs = ALU (Sub True) rhs
 pattern AND rhs = ALU And rhs
 pattern ORA rhs = ALU Or rhs
 pattern XOR rhs = ALU XOr rhs
+pattern DAA = ALU BCD (LHS (Reg RA))
 pattern LDAX rr = MOV (Reg RA) (LHS (Addr rr))
 pattern STAX rr = MOV (Addr rr) (LHS (Reg RA))
 

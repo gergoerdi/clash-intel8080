@@ -47,7 +47,6 @@ data MicroInstr
     | UpdateFlags
     | Rst (Unsigned 3)
     | SetInt Bool
-    | FixupBCD
     | Halt
     deriving (Show, Generic, NFDataX, Lift)
 
@@ -206,11 +205,6 @@ microcode (DCR (Reg r)) = mc $
     step INothing (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (ToReg r)                                 INothing
-microcode DAA = mc $
-    step INothing (FromReg RA) INothing >++>
-    step INothing FixupBCD     INothing >++>
-    step INothing UpdateFlags  INothing >++>
-    step INothing (ToReg RA)   INothing
 microcode (LXI rr) = mc $
     imm2 >++>
     step INothing (SwapReg2 rr) INothing

@@ -80,14 +80,15 @@ uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed $ throwError GotoNext
 uexec (Compute arg fun updateC updateAC) = do
-    c <- use (flag FC)
     x <- case arg of
         RegA -> use (reg RA)
         AddrLo -> truncateB <$> use addrBuf
         Const01 -> pure 0x01
         ConstFF -> pure 0xff
+    ac <- use (flag FAC)
+    c <- use (flag FC)
     y <- use valueBuf
-    let (ac', c', result) = binALU fun c x y
+    let (ac', c', result) = binALU fun x (ac, c, y)
     when (updateAC == SetAC) $ flag FAC .= ac'
     when (updateC == SetC) $ flag FC .= c'
     valueBuf .= result
@@ -113,22 +114,6 @@ uexec UpdateFlags = do
     flag FZ .= (x == 0)
     flag FS .= x `testBit` 7
     flag FP .= even (popCount x)
-uexec FixupBCD = do
-    c <- use (flag FC)
-    ac <- use (flag FAC)
-
-    x <- use valueBuf
-    (ac, x) <- return $
-        let (_, x0) = bitCoerce x :: (Unsigned 4, Unsigned 4)
-        in if x0 > 9 || ac then bitCoerce $ x `add` (0x06 :: Value) else (False, x)
-
-    (c, x) <- return $
-        let (x1, _) = bitCoerce x :: (Unsigned 4, Unsigned 4)
-        in if x1 > 9 || c then bitCoerce $ x `add` (0x60 :: Value) else (False, x)
-
-    flag FC .= c
-    flag FAC .= ac
-    valueBuf .= x
 
 twist :: Addr -> (Value, Addr)
 twist x = (hi, lohi)
