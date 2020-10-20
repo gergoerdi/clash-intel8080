@@ -40,7 +40,7 @@ data MicroInstr
     | SwapReg2 RegPair
     | Jump
     | When (Maybe Cond)
-    | Compute ALUArg ALU UpdateC UpdateAC
+    | Compute ALUArg ALU UpdateAC UpdateC
     | ComputeSR (Either ShiftRotate ShiftRotate)
     | Compute2 ALU2
     | Compute0 Flag ALU0
@@ -123,18 +123,18 @@ microcode HLT = mc $ step INothing Halt INothing
 microcode (INT b) = mc $ step INothing (SetInt b) INothing
 microcode CMA = mc $
     step INothing (FromReg RA)                               INothing >++>
-    step INothing (Compute ConstFF (Sub False) KeepC KeepAC) INothing >++>
+    step INothing (Compute ConstFF (Sub False) KeepAC KeepC) INothing >++>
     step INothing (ToReg RA)                                 INothing
 microcode CMC = mc $
     step INothing (Compute0 FC Complement0) INothing
 microcode STC = mc $
     step INothing (Compute0 FC ConstTrue0) INothing
 microcode (ALU fun src) = withRHS src $ \read ->
-    step read     (Compute RegA fun SetC SetAC) INothing >++>
+    step read     (Compute RegA fun SetAC SetC) INothing >++>
     step INothing UpdateFlags                   INothing >++>
     step INothing (ToReg RA)                    INothing
 microcode (CMP src) = withRHS src $ \read ->
-    step read     (Compute RegA (Sub False) SetC SetAC) INothing >++>
+    step read     (Compute RegA (Sub False) SetAC SetC) INothing >++>
     step INothing UpdateFlags                           INothing
 microcode (SHROT sr) = mc $
     step INothing (FromReg RA)   INothing >++>
@@ -181,28 +181,28 @@ microcode (INX rr) = mc $
 microcode (DAD rr) = mc $
     step INothing (FromReg2 rr)                            INothing >++>
     step INothing (FromReg RL)                             INothing >++>
-    step INothing (Compute AddrLo (Add False) SetC KeepAC) INothing >++>
+    step INothing (Compute AddrLo (Add False) KeepAC SetC) INothing >++>
     step INothing ToAddrBuf                                INothing >++>
     step INothing (FromReg RH)                             INothing >++>
-    step INothing (Compute AddrLo (Add True)  SetC KeepAC) INothing >++>
+    step INothing (Compute AddrLo (Add True)  KeepAC SetC) INothing >++>
     step INothing ToAddrBuf                                INothing >++>
     step INothing (SwapReg2 RHL)                           INothing
 microcode (INR (Addr rr)) = mc $
     step INothing        (FromReg2 rr)                             INothing >++>
-    step (IJust FromPtr) (Compute Const01 (Add False) KeepC SetAC) INothing >++>
+    step (IJust FromPtr) (Compute Const01 (Add False) SetAC KeepC) INothing >++>
     step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (INR (Reg r)) = mc $
     step INothing (FromReg r)                               INothing >++>
-    step INothing (Compute Const01 (Add False) KeepC SetAC) INothing >++>
+    step INothing (Compute Const01 (Add False) SetAC KeepC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (ToReg r)                                 INothing
 microcode (DCR (Addr rr)) = mc $
     step INothing        (FromReg2 rr)                             INothing >++>
-    step (IJust FromPtr) (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
+    step (IJust FromPtr) (Compute ConstFF (Add False) SetAC KeepC) INothing >++>
     step INothing        UpdateFlags                               (IJust ToPtr)
 microcode (DCR (Reg r)) = mc $
     step INothing (FromReg r)                               INothing >++>
-    step INothing (Compute ConstFF (Add False) KeepC SetAC) INothing >++>
+    step INothing (Compute ConstFF (Add False) SetAC KeepC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (ToReg r)                                 INothing
 microcode (LXI rr) = mc $

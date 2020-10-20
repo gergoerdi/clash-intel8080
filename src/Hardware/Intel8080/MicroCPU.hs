@@ -79,7 +79,7 @@ uexec Jump = assign pc =<< use addrBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed $ throwError GotoNext
-uexec (Compute arg fun updateC updateAC) = do
+uexec (Compute arg fun updateAC updateC) = do
     x <- case arg of
         RegA -> use (reg RA)
         AddrLo -> truncateB <$> use addrBuf
