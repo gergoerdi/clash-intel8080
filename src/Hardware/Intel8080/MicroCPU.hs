@@ -88,16 +88,16 @@ uexec (Compute arg fun updateAC updateC) = do
     ac <- use (flag FAC)
     c <- use (flag FC)
     y <- use valueBuf
-    let (ac', c', result) = binALU fun x (ac, c, y)
+    let (ac', c', y') = binALU fun x (ac, c, y)
     when (updateAC == SetAC) $ flag FAC .= ac'
     when (updateC == SetC) $ flag FC .= c'
-    valueBuf .= result
+    valueBuf .= y'
 uexec (ComputeSR sr) = do
     c <- use (flag FC)
     x <- use $ reg RA
-    let (c', result) = shiftRotateALU sr c x
+    let (c', x') = shiftRotateALU sr (c, x)
     flag FC .= c'
-    valueBuf .= result
+    valueBuf .= x'
 uexec (Compute2 fun) = do
     addrBuf %= case fun of
         Inc2 -> (+ 1)

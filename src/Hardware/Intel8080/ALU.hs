@@ -42,8 +42,8 @@ binALU fun x (ac, c, y) = case fun of
         (y1, _) = nybbles y'
         (c', z) = bitCoerce $ add y' $ if y1 > 9 || c then (0x60 :: Value) else 0
 
-shiftRotateALU :: Either ShiftRotate ShiftRotate -> Bool -> Value -> (Bool, Value)
-shiftRotateALU fun c x = case fun of
+shiftRotateALU :: Either ShiftRotate ShiftRotate -> (Bool, Value) -> (Bool, Value)
+shiftRotateALU fun (c, x) = case fun of
     Left sr -> (b7, bitCoerce (b654321, b0, case sr of Shift -> c; Rotate -> b7))
     Right sr -> (b0, bitCoerce (case sr of Shift -> c; Rotate -> b0, b7, b654321))
   where
