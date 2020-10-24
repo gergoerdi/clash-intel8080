@@ -33,10 +33,17 @@ data World m = World
     }
 
 newtype SoftCPU m a = SoftCPU
-    { runSoftCPU :: ReaderT (World m) (StateT MicroState (MaybeT m)) a }
+    { unSoftCPU :: ReaderT (World m) (StateT MicroState (MaybeT m)) a }
     deriving newtype
       (Functor, Applicative, Alternative, Monad,
        MonadPlus, MonadReader (World m), MonadState MicroState)
+
+runSoftCPU :: (Monad m) => World m -> MicroState -> m ()
+runSoftCPU w s0 =
+    void . runMaybeT .
+    (execStateT `flip` s0) . (runReaderT `flip` w) .
+    unSoftCPU $
+    forever nextInstr
 
 instance MonadTrans SoftCPU where
     lift = SoftCPU . lift . lift . lift
@@ -60,8 +67,8 @@ peekByte addr = do
     readMem <- asks readMem
     lift $ readMem addr
 
-step :: (Monad m) => SoftCPU m ()
-step = do
+nextInstr :: (Monad m) => SoftCPU m ()
+nextInstr = do
     instr <- decodeInstr <$> fetchByte
     exec instr
 

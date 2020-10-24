@@ -23,9 +23,7 @@ import Data.ByteString.Lazy (ByteString)
 
 run :: IOArray Addr Value -> IO ByteString
 run arr =
-    fmap toLazyByteString . execWriterT $ runMaybeT $
-    execStateT `flip` s0 $ runReaderT `flip` World{..} $
-    forever $ runSoftCPU step
+    fmap toLazyByteString . execWriterT $ runSoftCPU World{..} s0
   where
     readMem addr = liftIO $ readArray arr addr
     writeMem addr val = liftIO $ writeArray arr addr val
