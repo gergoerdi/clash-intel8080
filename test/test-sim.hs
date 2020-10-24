@@ -32,7 +32,7 @@ run arr = do
         zoom _2 $ sim (mkWorld i)
         _1 += 1
   where
-    mkWorld !i s = World{..}
+    mkWorld !i = World{..}
       where
         readMem addr = do
             if i `elem` [0, 1, 2, 3, 7] then Just <$> readMem_ addr

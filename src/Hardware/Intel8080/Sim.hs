@@ -57,15 +57,12 @@ world World{..} CPUOut{..} = do
             return True
         _ -> return False
 
-sim :: (Monad m) => (CPUState -> World m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m ()
-sim mkWorld = do
+sim :: (Monad m) => World m -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m ()
+sim w = do
     inp <- use _1
-    s <- use _2
-
-    let (out, s') = runState (cpuMachine inp) s
-    inp' <- zoom _3 $ world (mkWorld s) out
+    out <- zoom _2 $ mapStateT (pure . runIdentity) $ cpuMachine inp
+    inp' <- zoom _3 $ world w out
     _1 .= inp'
-    _2 .= s'
 
 interrupt :: (Monad m) => Unsigned 3 -> StateT (Maybe IRQ) m ()
 interrupt v = put $ Just $ NewIRQ rst
