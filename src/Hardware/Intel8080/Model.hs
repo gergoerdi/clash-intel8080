@@ -6,7 +6,7 @@ module Hardware.Intel8080.Model where
 import Hardware.Intel8080
 import Hardware.Intel8080.Decode
 import Hardware.Intel8080.Microcode
-import Hardware.Intel8080.MicroCPU as MCPU
+import Hardware.Intel8080.MicroCPU
 
 import Clash.Prelude hiding (lift)
 import Control.Monad.Reader
@@ -32,15 +32,16 @@ data World m = World
     , outPort :: Port -> Value -> m Value
     }
 
-newtype CPU m a = CPU{ unCPU :: ReaderT (World m) (StateT MicroState (MaybeT m)) a }
+newtype SoftCPU m a = SoftCPU
+    { runSoftCPU :: ReaderT (World m) (StateT MicroState (MaybeT m)) a }
     deriving newtype
-      (Functor, Applicative, Alternative, Monad, MonadFail,
+      (Functor, Applicative, Alternative, Monad,
        MonadPlus, MonadReader (World m), MonadState MicroState)
 
-instance MonadTrans CPU where
-    lift = CPU . lift . lift . lift
+instance MonadTrans SoftCPU where
+    lift = SoftCPU . lift . lift . lift
 
-dumpState :: (MonadIO m) => CPU m ()
+dumpState :: (MonadIO m) => SoftCPU m ()
 dumpState = do
     pc <- use pc
     sp <- use sp
@@ -49,27 +50,27 @@ dumpState = do
         printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
         printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
 
-fetchByte :: (Monad m) => CPU m Value
+fetchByte :: (Monad m) => SoftCPU m Value
 fetchByte = do
     pc <- use pc <* (pc += 1)
     peekByte pc
 
-peekByte :: (Monad m) => Addr -> CPU m Value
+peekByte :: (Monad m) => Addr -> SoftCPU m Value
 peekByte addr = do
     readMem <- asks readMem
     lift $ readMem addr
 
-step :: (Monad m) => CPU m ()
+step :: (Monad m) => SoftCPU m ()
 step = do
     instr <- decodeInstr <$> fetchByte
     exec instr
 
-interrupt :: (Monad m) => Instr -> CPU m ()
+interrupt :: (Monad m) => Instr -> SoftCPU m ()
 interrupt instr = whenM (use allowInterrupts) $ do
     allowInterrupts .= False
     exec instr
 
-exec :: (Monad m) => Instr -> CPU m ()
+exec :: (Monad m) => Instr -> SoftCPU m ()
 exec instr = do
     let (setup, uops) = microcode instr
     addressing $ wedgeRight setup
@@ -79,10 +80,10 @@ exec instr = do
         Left GotoHalt -> mzero
         _ -> return ()
 
-addressing :: (Monad m) => Wedge OutAddr InAddr -> CPU m ()
+addressing :: (Monad m) => Wedge OutAddr InAddr -> SoftCPU m ()
 addressing = bitraverse_ (doWrite <=< outAddr) (doRead <=< inAddr)
 
-doWrite :: (Monad m) => Either Port Addr -> CPU m ()
+doWrite :: (Monad m) => Either Port Addr -> SoftCPU m ()
 doWrite target = either writePort poke target =<< use valueBuf
   where
     writePort port value = do
@@ -93,14 +94,14 @@ doWrite target = either writePort poke target =<< use valueBuf
         writeMem <- asks writeMem
         lift $ writeMem addr value
 
-doRead :: (Monad m) => Either Port Addr -> CPU m ()
+doRead :: (Monad m) => Either Port Addr -> SoftCPU m ()
 doRead target = assign valueBuf =<< either readPort peekByte target
   where
     readPort port = do
         read <- asks inPort
         lift $ read port
 
-ustep :: (Monad m) => MicroOp -> ExceptT FlowControl (CPU m) ()
+ustep :: (Monad m) => MicroOp -> ExceptT FlowControl (SoftCPU m) ()
 ustep (effect, post) = do
     uexec effect
     lift $ addressing post
