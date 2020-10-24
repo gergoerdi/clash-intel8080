@@ -66,7 +66,7 @@ evalCond :: (MonadState MicroState m) => Cond -> m Bool
 evalCond (Cond flg target) = uses (flag flg) (== target)
 
 {-# INLINE uexec #-}
-uexec :: (MonadState MicroState m, MonadError FlowControl m) => MicroInstr -> m ()
+uexec :: (MonadState MicroState m) => MicroInstr -> ExceptT FlowControl m ()
 uexec Halt = throwError GotoHalt
 uexec (FromReg r) = assign valueBuf =<< use (reg r)
 uexec (ToReg r) = assign (reg r) =<< use valueBuf
