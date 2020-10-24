@@ -35,22 +35,21 @@ run arr = do
     mkWorld !i = World{..}
       where
         readMem addr = do
-            if i `elem` [0, 1, 2, 3, 7] then Just <$> readMem_ addr
-              else return Nothing
-        readMem_ = liftIO . readArray arr
+            guard $ i `elem` [0, 1, 2, 3, 7]
+            liftIO $ readArray arr addr
         writeMem addr = liftIO . writeArray arr addr
 
-        inPort port = Just <$> return 0xff
+        inPort port = return 0xff
         outPort port value = do
             case port of
                 0x00 -> do
                     liftIO $ putStrLn ""
                     tell $ char7 '\n'
-                    mzero
+                    lift mzero
                 0x01 -> do
                     liftIO $ putChar . chr  . fromIntegral $ value
                     tell $ word8 . fromIntegral $ value
-            return $ Just 0xff
+            return 0xff
 
 
 main :: IO ()

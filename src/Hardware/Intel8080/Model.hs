@@ -24,17 +24,17 @@ import Text.Printf
 mkState :: Addr -> MicroState
 mkState = mkMicroState
 
-data R m = MkR
+data World m = World
     { readMem :: Addr -> m Value
     , writeMem :: Addr -> Value -> m ()
     , inPort :: Port -> m Value
     , outPort :: Port -> Value -> m Value
     }
 
-newtype CPU m a = CPU{ unCPU :: ReaderT (R m) (StateT MicroState m) a }
+newtype CPU m a = CPU{ unCPU :: ReaderT (World m) (StateT MicroState m) a }
     deriving newtype
       (Functor, Applicative, Alternative, Monad, MonadFail,
-       MonadPlus, MonadReader (R m), MonadState MicroState)
+       MonadPlus, MonadReader (World m), MonadState MicroState)
 
 instance MonadTrans CPU where
     lift = CPU . lift . lift
