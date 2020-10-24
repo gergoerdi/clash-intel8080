@@ -43,11 +43,9 @@ run arr = do
         outPort port value = do
             case port of
                 0x00 -> do
-                    liftIO $ putStrLn ""
                     tell $ char7 '\n'
                     lift mzero
                 0x01 -> do
-                    liftIO $ putChar . chr  . fromIntegral $ value
                     tell $ word8 . fromIntegral $ value
             return 0xff
 
