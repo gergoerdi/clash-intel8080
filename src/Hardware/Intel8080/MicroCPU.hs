@@ -100,14 +100,14 @@ uexec (ComputeSR sr) = do
     valueBuf .= x'
 uexec (Compute2 fun) = do
     addrBuf %= case fun of
-        Inc2 -> (+ 1)
-        Dec2 -> subtract 1
-uexec (Compute0 flg fun0) = do
-    flag flg %= case fun0 of
-        ConstTrue0 -> const True
-        ConstFalse0 -> const False
-        Complement0 -> complement
-uexec (Rst rst) = pc .= fromIntegral rst `shiftL` 3
+        Inc -> (+ 1)
+        Dec -> subtract 1
+uexec (Compute0 flg fun) = do
+    flag flg %= case fun of
+        ConstTrue -> const True
+        ConstFalse -> const False
+        Complement -> complement
+uexec (Rst rst) = pc .= extend rst `shiftL` 3
 uexec (SetInt b) = allowInterrupts .= b
 uexec UpdateFlags = do
     x <- use valueBuf

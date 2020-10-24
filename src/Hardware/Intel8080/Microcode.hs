@@ -58,14 +58,14 @@ data ALUArg
     deriving (Show, Generic, NFDataX, Lift)
 
 data ALU2
-    = Inc2
-    | Dec2
+    = Inc
+    | Dec
     deriving (Show, Generic, NFDataX, Lift)
 
 data ALU0
-    = Complement0
-    | ConstTrue0
-    | ConstFalse0
+    = Complement
+    | ConstTrue
+    | ConstFalse
     deriving (Show, Generic, NFDataX, Lift)
 
 type MicroSteps = Steps InAddr MicroInstr OutAddr
@@ -126,9 +126,9 @@ microcode CMA = mc $
     step INothing (Compute ConstFF (Sub False) KeepAC KeepC) INothing >++>
     step INothing (ToReg RA)                                 INothing
 microcode CMC = mc $
-    step INothing (Compute0 FC Complement0) INothing
+    step INothing (Compute0 FC Complement) INothing
 microcode STC = mc $
-    step INothing (Compute0 FC ConstTrue0) INothing
+    step INothing (Compute0 FC ConstTrue) INothing
 microcode (ALU fun src) = withRHS src $ \read ->
     step read     (Compute RegA fun SetAC SetC) INothing >++>
     step INothing UpdateFlags                   INothing >++>
@@ -171,13 +171,13 @@ microcode STA = mc $
     imm2 >++>
     step INothing (FromReg RA) (IJust ToPtr)
 microcode (DCX rr) = mc $
-    step INothing (FromReg2 rr)   INothing >++>
-    step INothing (Compute2 Dec2) INothing >++>
-    step INothing (SwapReg2 rr)   INothing
+    step INothing (FromReg2 rr)  INothing >++>
+    step INothing (Compute2 Dec) INothing >++>
+    step INothing (SwapReg2 rr)  INothing
 microcode (INX rr) = mc $
-    step INothing (FromReg2 rr)       INothing >++>
-    step INothing (Compute2 Inc2) INothing >++>
-    step INothing (SwapReg2 rr)   INothing
+    step INothing (FromReg2 rr)  INothing >++>
+    step INothing (Compute2 Inc) INothing >++>
+    step INothing (SwapReg2 rr)  INothing
 microcode (DAD rr) = mc $
     step INothing (FromReg2 rr)                            INothing >++>
     step INothing (FromReg RL)                             INothing >++>
@@ -216,14 +216,14 @@ microcode SPHL = mc $
     step INothing (SwapReg2 SP)  INothing
 microcode LHLD = mc $
     imm2 >++>
-    step (IJust FromPtr) (ToReg RL)      INothing >++>
-    step INothing        (Compute2 Inc2) INothing >++>
-    step (IJust FromPtr) (ToReg RH)      INothing
+    step (IJust FromPtr) (ToReg RL)     INothing >++>
+    step INothing        (Compute2 Inc) INothing >++>
+    step (IJust FromPtr) (ToReg RH)     INothing
 microcode SHLD = mc $
     imm2 >++>
-    step INothing (FromReg RL)    (IJust ToPtr) >++>
-    step INothing (Compute2 Inc2) INothing      >++>
-    step INothing (FromReg RH)    (IJust ToPtr)
+    step INothing (FromReg RL)   (IJust ToPtr) >++>
+    step INothing (Compute2 Inc) INothing      >++>
+    step INothing (FromReg RH)   (IJust ToPtr)
 microcode XTHL = mc $
     pop2 >++>
     step INothing (SwapReg2 RHL) INothing >++>
