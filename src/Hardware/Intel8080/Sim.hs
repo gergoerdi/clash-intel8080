@@ -58,12 +58,13 @@ world World{..} CPUOut{..} = do
             return True
         _ -> return False
 
-sim :: (Monad m) => World (MaybeT m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m ()
+sim :: (Monad m) => World (MaybeT m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m Bool
 sim w = do
     inp <- use _1
     out <- zoom _2 $ mapStateT (pure . runIdentity) $ cpuMachine inp
     inp' <- zoom _3 $ world w out
     _1 .= inp'
+    return $ _halted out
 
 interrupt :: (Monad m) => Unsigned 3 -> StateT (Maybe IRQ) m ()
 interrupt v = put $ Just $ NewIRQ rst

@@ -11,6 +11,7 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Lens hiding (Index, (<.>))
 import Control.Monad.Trans.Maybe
+import Control.Monad.Extra
 
 import Data.Array.IO
 import System.IO
@@ -27,10 +28,11 @@ run :: IOArray Addr Value -> IO ByteString
 run arr = do
     let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState 0x0100, Nothing))
 
-    fmap toLazyByteString . execWriterT $ runMaybeT $ runSim $ forever $ do
+    fmap toLazyByteString . execWriterT $ runSim $ whileM $ do
         i <- use _1
-        zoom _2 $ sim (mkWorld i)
+        halted <- zoom _2 $ sim (mkWorld i)
         _1 += 1
+        return $ not halted
   where
     mkWorld !i = World{..}
       where
@@ -44,7 +46,6 @@ run arr = do
             case port of
                 0x00 -> do
                     tell $ char7 '\n'
-                    lift mzero
                 0x01 -> do
                     tell $ word8 . fromIntegral $ value
             return 0xff

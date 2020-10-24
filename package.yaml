@@ -96,3 +96,4 @@ tests:
       - tasty
       - tasty-golden
       - filepath
+      - extra

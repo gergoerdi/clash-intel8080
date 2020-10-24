@@ -67,6 +67,7 @@ declareBareB [d|
       { _addrOut :: Either Port Addr
       , _dataOut :: Maybe Value
       , _interruptAck :: Bool
+      , _halted :: Bool
       } |]
 makeLenses ''CPUOut
 
@@ -76,6 +77,9 @@ defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
     _addrOut = Right $ fromMaybe _addrBuf _addrLatch
     _dataOut = Nothing
     _interruptAck = False
+    _halted = case _phase of
+        Halted -> True
+        _ -> False
 
 type M = MaybeT (CPUM CPUState CPUOut)
 

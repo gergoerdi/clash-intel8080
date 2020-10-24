@@ -12,6 +12,7 @@ import Clash.Prelude hiding (lift)
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Trans.Maybe
 import Data.Foldable (traverse_)
 import Data.Bifoldable (bitraverse_)
 import Control.Monad.Extra (whenM)
@@ -31,13 +32,13 @@ data World m = World
     , outPort :: Port -> Value -> m Value
     }
 
-newtype CPU m a = CPU{ unCPU :: ReaderT (World m) (StateT MicroState m) a }
+newtype CPU m a = CPU{ unCPU :: ReaderT (World m) (StateT MicroState (MaybeT m)) a }
     deriving newtype
       (Functor, Applicative, Alternative, Monad, MonadFail,
        MonadPlus, MonadReader (World m), MonadState MicroState)
 
 instance MonadTrans CPU where
-    lift = CPU . lift . lift
+    lift = CPU . lift . lift . lift
 
 dumpState :: (MonadIO m) => CPU m ()
 dumpState = do
@@ -73,7 +74,10 @@ exec instr = do
     let (setup, uops) = microcode instr
     addressing $ wedgeRight setup
     -- liftIO $ print (instr, uops)
-    void $ runExceptT $ mapM_ ustep uops
+    ex <- runExceptT $ mapM_ ustep uops
+    case ex of
+        Left GotoHalt -> mzero
+        _ -> return ()
 
 addressing :: (Monad m) => Wedge OutAddr InAddr -> CPU m ()
 addressing = bitraverse_ (doWrite <=< outAddr) (doRead <=< inAddr)

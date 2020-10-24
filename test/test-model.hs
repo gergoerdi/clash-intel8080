@@ -35,7 +35,6 @@ run arr =
         case port of
             0x00 -> do
                 tell $ char7 '\n'
-                mzero
             0x01 -> do
                 tell $ word8 . fromIntegral $ value
         return 0xff
