@@ -6,26 +6,15 @@ import Hardware.Intel8080
 import Prelude (putChar, (^))
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Writer
 import Data.Array
 import Data.Array.IO
 import Data.Char
 import Data.Word (Word8)
 import qualified Data.List as L
 import qualified Data.ByteString as BS
+import Data.ByteString.Lazy.Builder
 import Text.Printf
-
-mapWhileM :: (Monad m) => (a -> m (Maybe b)) -> [a] -> m [b]
-mapWhileM f = go
-  where
-    go [] = return []
-    go (x:xs) = do
-        my <- f x
-        case my of
-            Nothing -> return []
-            Just y -> (y:) <$> go xs
-
-forWhileM :: (Monad m) => [a] -> (a -> m (Maybe b)) -> m [b]
-forWhileM = flip mapWhileM
 
 prelude :: [Word8]
 prelude = L.take 0x100 $ framework <> L.repeat 0x00
@@ -52,12 +41,16 @@ prelude = L.take 0x100 $ framework <> L.repeat 0x00
         , [ 0xc3, 0x10, 0x00 ]  -- 0x001a: JMP 0x0011
         ]
 
-outTestPort :: IO () -> Port -> Value -> IO Value
-outTestPort finish port value = do
+testOutPort :: (MonadIO m, MonadWriter Builder m) => Bool -> Port -> Value -> m Value
+testOutPort verbose port value = do
     case port of
-        0x00 -> finish
-        0x01 -> putChar . chr . fromIntegral $ value
-    return 0x00
+        0x00 -> do
+            when verbose $ liftIO $ putStrLn ""
+            tell $ char7 '\n'
+        0x01 -> do
+            when verbose $ liftIO $ putChar . chr . fromIntegral $ value
+            tell $ word8 . fromIntegral $ value
+    return 0xff
 
 banner :: (MonadIO m) => String -> m a -> m a
 banner title act = do

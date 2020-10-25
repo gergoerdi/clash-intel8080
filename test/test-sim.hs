@@ -24,8 +24,8 @@ import System.FilePath ((<.>))
 import Data.ByteString.Lazy.Builder
 import Data.ByteString.Lazy (ByteString)
 
-run :: IOArray Addr Value -> IO ByteString
-run arr = do
+run :: Bool -> IOArray Addr Value -> IO ByteString
+run verbose arr = do
     let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState 0x0100, Nothing))
 
     fmap toLazyByteString . execWriterT $ runSim $ whileM $ do
@@ -42,14 +42,7 @@ run arr = do
         writeMem addr = liftIO . writeArray arr addr
 
         inPort port = return 0xff
-        outPort port value = do
-            case port of
-                0x00 -> do
-                    tell $ char7 '\n'
-                0x01 -> do
-                    tell $ word8 . fromIntegral $ value
-            return 0xff
-
+        outPort = testOutPort verbose
 
 main :: IO ()
 main = do
@@ -69,6 +62,6 @@ main = do
 goldenTests :: [FilePath] -> IO TestTree
 goldenTests images = do
     return $ testGroup "Intel 8080 test benches running on model"
-      [ goldenVsString image (image <.> "out") (runTest run image)
+      [ goldenVsString image (image <.> "out") (runTest (run False) image)
       | image <- images
       ]
