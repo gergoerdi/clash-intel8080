@@ -16,7 +16,7 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Lazy.Builder
 import Text.Printf
 
-prelude :: [Word8]
+prelude :: [Value]
 prelude = mconcat
     [ [ 0x3e, 0x0a ]        -- 0x0000: MVI A, 0x0a
     , [ 0xd3, 0x00 ]        -- 0x0002: OUT 0
@@ -52,10 +52,15 @@ banner title act = do
     liftIO $ printf "\n%s--%s--%s\n" (L.replicate 10 '-') ('-' <$ title) (L.replicate 10 '-')
     return x
 
+load :: FilePath -> IO (IOArray Addr Value)
+load romFile = do
+    bs <- fmap fromIntegral . BS.unpack <$> BS.readFile romFile
+    arr <- newArray (minBound, maxBound) 0x00
+    zipWithM_ (writeArray arr) [0x0000..] prelude
+    zipWithM_ (writeArray arr) [0x0100..] bs
+    return arr
+
 runTest :: (IOArray Addr Value -> IO a) -> FilePath -> IO a
 runTest body romFile = do
-    bs <- BS.unpack <$> BS.readFile romFile
-    arr <- newArray (minBound, maxBound) 0x00
-    zipWithM_ (writeArray arr) [0x0000..] (fromIntegral <$> prelude)
-    zipWithM_ (writeArray arr) [0x0100..] (fromIntegral <$> bs)
+    arr <- load romFile
     body arr
