@@ -17,29 +17,27 @@ import Data.ByteString.Lazy.Builder
 import Text.Printf
 
 prelude :: [Word8]
-prelude = L.take 0x100 $ framework <> L.repeat 0x00
-  where
-    framework = mconcat
-        [ [ 0xd3, 0x00 ]        -- 0x0000: OUT 0
-        , [ 0x76 ]              -- 0x0002: HLT
-        , [ 0x00, 0x00]
+prelude = mconcat
+    [ [ 0xd3, 0x00 ]        -- 0x0000: OUT 0
+    , [ 0x76 ]              -- 0x0002: HLT
+    , [ 0x00, 0x00]
 
-        , [ 0x3e, 0x02 ]        -- 0x0005: MVI A, 0x02
-        , [ 0xb9 ]              -- 0x0007: CMP C
-        , [ 0xc2, 0x0f, 0x00 ]  -- 0x0008: JNZ 0x000f
-        , [ 0x7b ]              -- 0x000B: MOV A, E
-        , [ 0xd3, 0x01 ]        -- 0x000C: OUT 1
-        , [ 0xc9 ]              -- 0x000E: RET
+    , [ 0x3e, 0x02 ]        -- 0x0005: MVI A, 0x02
+    , [ 0xb9 ]              -- 0x0007: CMP C
+    , [ 0xc2, 0x0f, 0x00 ]  -- 0x0008: JNZ 0x000f
+    , [ 0x7b ]              -- 0x000B: MOV A, E
+    , [ 0xd3, 0x01 ]        -- 0x000C: OUT 1
+    , [ 0xc9 ]              -- 0x000E: RET
 
-        , [ 0x0e, 0x24 ]        -- 0x000F: MVI C, '$'
-        , [ 0x1a ]              -- 0x0011: LDAX DE
-        , [ 0xb9 ]              -- 0x0012: CMP C
-        , [ 0xc2, 0x17, 0x00 ]  -- 0x0013: JNZ 0x0017
-        , [ 0xc9 ]              -- 0x0016: RET
-        , [ 0xd3, 0x01 ]        -- 0x0017: OUT 1
-        , [ 0x13 ]              -- 0x0019: INX DE
-        , [ 0xc3, 0x10, 0x00 ]  -- 0x001a: JMP 0x0011
-        ]
+    , [ 0x0e, 0x24 ]        -- 0x000F: MVI C, '$'
+    , [ 0x1a ]              -- 0x0011: LDAX DE
+    , [ 0xb9 ]              -- 0x0012: CMP C
+    , [ 0xc2, 0x17, 0x00 ]  -- 0x0013: JNZ 0x0017
+    , [ 0xc9 ]              -- 0x0016: RET
+    , [ 0xd3, 0x01 ]        -- 0x0017: OUT 1
+    , [ 0x13 ]              -- 0x0019: INX DE
+    , [ 0xc3, 0x10, 0x00 ]  -- 0x001a: JMP 0x0011
+    ]
 
 testOutPort :: (MonadIO m, MonadWriter Builder m) => Bool -> Port -> Value -> m Value
 testOutPort verbose port value = do
@@ -62,7 +60,7 @@ banner title act = do
 runTest :: (IOArray Addr Value -> IO a) -> FilePath -> IO a
 runTest body romFile = do
     bs <- BS.unpack <$> BS.readFile romFile
-    let memL = L.take (2 ^ 16) $ prelude <> bs <> L.repeat 0x00
-    arr <- newListArray (minBound, maxBound) (fromIntegral <$> memL)
-
+    arr <- newArray (minBound, maxBound) 0x00
+    zipWithM_ (writeArray arr) [0x0000..] (fromIntegral <$> prelude)
+    zipWithM_ (writeArray arr) [0x0100..] (fromIntegral <$> bs)
     body arr
