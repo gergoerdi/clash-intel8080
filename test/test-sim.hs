@@ -42,7 +42,7 @@ run verbose arr = do
         writeMem addr = liftIO . writeArray arr addr
 
         inPort port = return 0xff
-        outPort = testOutPort verbose
+        outPort _ = testOutPort verbose
 
 main :: IO ()
 main = do
@@ -56,7 +56,6 @@ main = do
             -- , "image/testbench/8080EXM.COM"
             ]
 
-    -- mapM_ (runTest run) images
     defaultMain =<< goldenTests images
 
 goldenTests :: [FilePath] -> IO TestTree

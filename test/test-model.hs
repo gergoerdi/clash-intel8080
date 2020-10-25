@@ -28,7 +28,7 @@ run verbose arr =
     readMem addr = liftIO $ readArray arr addr
     writeMem addr val = liftIO $ writeArray arr addr val
     inPort _ = return 0xff
-    outPort = testOutPort verbose
+    outPort _ = testOutPort verbose
 
     s0 = mkState 0x0100
 
