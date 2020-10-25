@@ -131,16 +131,6 @@ fetch inp = do
     microState.pc += 1
     return x
 
-cpuMachine :: Pure CPUIn -> State CPUState (Pure CPUOut)
-cpuMachine inp = do
-    s0 <- get
-    (x, out) <- runWriterT . runMaybeT $ cpu inp
-    case x of
-        Nothing -> do
-            put s0
-        Just () -> return ()
-    gets $ \s -> update (defaultOut s) out
-
 cpu :: Pure CPUIn -> M ()
 cpu inp@CPUIn{..} = do
     interrupted <- latchInterrupt inp

@@ -61,7 +61,7 @@ world World{..} CPUOut{..} = do
 sim :: (Monad m) => World (MaybeT m) -> StateT (Pure CPUIn, CPUState, Maybe IRQ) m Bool
 sim w = do
     inp <- use _1
-    out <- zoom _2 $ mapStateT (pure . runIdentity) $ cpuMachine inp
+    out <- zoom _2 $ mapStateT (pure . runIdentity) . runCPU defaultOut . void . runMaybeT $ cpu inp
     inp' <- zoom _3 $ world w out
     _1 .= inp'
     return $ _halted out
