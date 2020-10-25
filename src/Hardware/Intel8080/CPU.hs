@@ -146,7 +146,9 @@ cpu inp@CPUIn{..} = do
     interrupted <- latchInterrupt inp
 
     use phase >>= \case
-        Halted -> mzero
+        Halted -> when interrupted $ do
+            acceptInterrupt
+            phase .= Fetching True
         Init -> do
             fetchNext
         Fetching False | interrupted -> do
