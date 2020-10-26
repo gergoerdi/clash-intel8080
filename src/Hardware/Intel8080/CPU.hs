@@ -36,7 +36,7 @@ data Phase
     = Init
     | Halted
     | Fetching Bool
-    | Executing Value Bool (Index MicroLen)
+    | Executing Bool Value (Index MicroLen)
     deriving (Show, Generic, NFDataX)
 
 declareBareB [d|
@@ -137,29 +137,30 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
         Fetching interrupting -> do
             instr <- readByte inp
             unless interrupting $ microState.pc += 1
-
             let (setup, _) = microcodeFor instr
             load <- addressing (wedgeRight setup)
-            phase .= Executing instr load 0
-        Executing instr load i -> do
+            phase .= Executing load instr 0
+        Executing load instr i -> do
             when load $ assign (microState.valueBuf) =<< readByte inp
-
-            let (uop, teardown) = snd (microcodeFor instr) !! i
-            -- traceShow (i, uop, teardown) $ return ()
-            x <- runExceptT $ zoom microState $ uexec uop
-            case x of
-                Left GotoNext -> do
-                    fetchNext
-                Left GotoHalt -> do
-                    phase .= Halted
-                Right () -> do
-                    load' <- addressing teardown
-                    maybe fetchNext (assign phase . Executing instr load') $ succIdx i
+            exec instr i
 
 fetchNext :: M ()
 fetchNext = do
     latchAddr =<< use (microState.pc)
     phase .= Fetching False
+
+exec :: Value -> Index MicroLen -> M ()
+exec instr i = do
+    let (uop, teardown) = snd (microcodeFor instr) !! i
+    -- traceShow (i, uop, teardown) $ return ()
+    runExceptT (zoom microState $ uexec uop) >>= \case
+        Left GotoNext -> do
+            fetchNext
+        Left GotoHalt -> do
+            phase .= Halted
+        Right () -> do
+            load <- addressing teardown
+            maybe fetchNext (assign phase . Executing load instr) $ succIdx i
 
 addressing :: Wedge OutAddr InAddr -> M Bool
 addressing Nowhere = return False
