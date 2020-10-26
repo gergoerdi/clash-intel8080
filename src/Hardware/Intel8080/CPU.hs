@@ -111,6 +111,7 @@ acceptInterrupt :: M ()
 acceptInterrupt = do
     -- trace (show ("Interrupt accepted", pc)) $ return ()
     microState.allowInterrupts .= False
+    addrLatch .= Nothing
     interrupted .= False
     interruptAck .:= True
 
