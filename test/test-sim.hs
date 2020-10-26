@@ -60,7 +60,7 @@ main = do
 
 goldenTests :: [FilePath] -> IO TestTree
 goldenTests images = do
-    return $ testGroup "Intel 8080 test benches running on model"
+    return $ testGroup "Intel 8080 test benches running on simulator"
       [ goldenVsString image (image <.> "out") (runTest (run False) image)
       | image <- images
       ]
