@@ -115,24 +115,13 @@ acceptInterrupt = do
     interruptAck .:= True
 
 readByte :: Pure CPUIn -> M Value
-readByte CPUIn{..} = readFrom dataIn
-
-readFrom :: Maybe Value -> M Value
-readFrom = maybe retry ack
-  where
-    retry = mzero
-    ack x = do
-        addrLatch .= Nothing
-        return x
-
-fetch :: Pure CPUIn -> M Value
-fetch inp = do
-    x <- readByte inp
-    microState.pc += 1
+readByte CPUIn{..} = do
+    x <- MaybeT . return $ dataIn
+    addrLatch .= Nothing
     return x
 
-cpu :: Pure CPUIn -> M ()
-cpu inp@CPUIn{..} = do
+cpu :: Pure CPUIn -> CPUM CPUState CPUOut ()
+cpu inp@CPUIn{..} = void . runMaybeT $ do
     interrupted <- latchInterrupt inp
 
     use phase >>= \case
@@ -145,12 +134,14 @@ cpu inp@CPUIn{..} = do
             acceptInterrupt
             phase .= Fetching True
         Fetching interrupting -> do
-            instr <- {- traceState $ -} if interrupting then readByte inp else fetch inp
+            instr <- readByte inp
+            unless interrupting $ microState.pc += 1
+
             let (setup, _) = microcodeFor instr
             load <- addressing (wedgeRight setup)
             phase .= Executing instr load 0
         Executing instr load i -> do
-            when load $ assign (microState.valueBuf) =<< readFrom dataIn
+            when load $ assign (microState.valueBuf) =<< readByte inp
 
             let (uop, teardown) = snd (microcodeFor instr) !! i
             -- traceShow (i, uop, teardown) $ return ()
