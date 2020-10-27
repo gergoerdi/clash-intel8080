@@ -75,21 +75,21 @@ defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
         Halted -> True
         _ -> False
 
-type M = MaybeT (CPUM CPUState CPUOut)
+type CPU = MaybeT (CPUM CPUState CPUOut)
 
-traceState :: (Show a) => M a -> M a
+traceState :: (Show a) => CPU a -> CPU a
 traceState act = do
     s <- zoom microState $ gets debugState
     x <- act
     trace (unlines [s, show x]) $ return x
 
-latchInterrupt :: Pure CPUIn -> M Bool
+latchInterrupt :: Pure CPUIn -> CPU Bool
 latchInterrupt CPUIn{..} = do
     allowed <- use (microState.allowInterrupts)
     when (interruptRequest && allowed) $ interrupted .= True
     use interrupted
 
-acceptInterrupt :: M ()
+acceptInterrupt :: CPU ()
 acceptInterrupt = do
     -- trace (show ("Interrupt accepted", pc)) $ return ()
     microState.allowInterrupts .= False
@@ -97,7 +97,7 @@ acceptInterrupt = do
     interrupted .= False
     interruptAck .:= True
 
-readByte :: Pure CPUIn -> M Value
+readByte :: Pure CPUIn -> CPU Value
 readByte CPUIn{..} = do
     x <- MaybeT . return $ dataIn
     addrLatch .= Nothing
@@ -126,12 +126,12 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
             when load $ assign (microState.valueBuf) =<< readByte inp
             exec instr i
 
-fetchNext :: M ()
+fetchNext :: CPU ()
 fetchNext = do
     latchAddr =<< use (microState.pc)
     phase .= Fetching False
 
-exec :: Value -> Index MicroLen -> M ()
+exec :: Value -> Index MicroLen -> CPU ()
 exec instr i = do
     let (uop, teardown) = snd (microcodeFor instr) !! i
     -- traceShow (i, uop, teardown) $ return ()
@@ -144,7 +144,7 @@ exec instr i = do
             load <- addressing teardown
             maybe fetchNext (assign phase . Executing load instr) $ succIdx i
 
-addressing :: Wedge OutAddr InAddr -> M Bool
+addressing :: Wedge OutAddr InAddr -> CPU Bool
 addressing Nowhere = return False
 addressing (Here write) = do
     doWrite =<< zoom microState (outAddr write)
@@ -153,20 +153,20 @@ addressing (There read) = do
     doRead =<< zoom microState (inAddr read)
     return True
 
-doWrite :: Either Port Addr -> M ()
+doWrite :: Either Port Addr -> CPU ()
 doWrite target = do
     addrOut .:= target
     value <- use (microState.valueBuf)
     dataOut .:= Just value
 
-doRead :: Either Port Addr -> M ()
+doRead :: Either Port Addr -> CPU ()
 doRead target = either tellPort latchAddr target
 
-tellPort :: Value -> M ()
+tellPort :: Value -> CPU ()
 tellPort port = do
     addrOut .:= Left port
 
-latchAddr :: Addr -> M ()
+latchAddr :: Addr -> CPU ()
 latchAddr addr = do
     addrLatch .= Just addr
     addrOut .:= Right addr
