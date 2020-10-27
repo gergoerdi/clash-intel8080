@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards, LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Hardware.Intel8080.CPU where
 
@@ -15,12 +14,9 @@ import Hardware.Intel8080.Microcode
 import Hardware.Intel8080.MicroCPU
 
 import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Except
 import Control.Lens hiding (Index)
-import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.Wedge
 
@@ -28,9 +24,7 @@ import Barbies
 import Barbies.Bare
 import Data.Barbie.TH
 import qualified Language.Haskell.TH.Syntax as TH
-
 import Debug.Trace
-import Text.Printf
 
 data Phase
     = Init

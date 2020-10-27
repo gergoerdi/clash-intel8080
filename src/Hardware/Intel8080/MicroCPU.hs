@@ -1,5 +1,4 @@
-{-# LANGUAGE RecordWildCards, LambdaCase, RankNTypes #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards, RankNTypes #-}
 module Hardware.Intel8080.MicroCPU where
 
 import Prelude ()

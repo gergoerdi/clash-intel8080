@@ -19,9 +19,6 @@ import Control.Monad.Extra (whenM)
 import Control.Lens hiding (index)
 import Data.Wedge
 
-import Debug.Trace
-import Text.Printf
-
 mkState :: Addr -> MicroState
 mkState = mkMicroState
 
