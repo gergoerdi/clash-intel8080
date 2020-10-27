@@ -108,9 +108,6 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
     interrupted <- latchInterrupt inp
 
     use phase >>= \case
-        Halted -> when interrupted $ do
-            acceptInterrupt
-            phase .= Fetching True
         Init -> do
             fetchNext
         Fetching False | interrupted -> do
@@ -125,6 +122,9 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
         Executing load instr i -> do
             when load $ assign (microState.valueBuf) =<< readByte inp
             exec instr i
+        Halted -> when interrupted $ do
+            acceptInterrupt
+            phase .= Fetching True
 
 fetchNext :: CPU ()
 fetchNext = do
