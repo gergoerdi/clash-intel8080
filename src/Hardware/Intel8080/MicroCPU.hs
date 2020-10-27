@@ -18,6 +18,7 @@ import Control.Monad.State
 import Control.Arrow ((&&&))
 import Control.Monad.Trans.Maybe
 import Control.Monad.Except
+import Text.Printf
 
 data FlowControl = GotoNext | GotoHalt
 
@@ -40,6 +41,14 @@ mkMicroState pc0 = MicroState{..}
     _registers = repeat 0x00
     _valueBuf = 0
     _addrBuf = 0
+
+debugState :: MicroState -> String
+debugState s@MicroState{..} = unlines
+    [ printf "Addr: 0x%04x  PC: 0x%04x  SP: 0x%04x  Val:   0x%02x" _addrBuf _pc _sp _valueBuf
+    , printf "BC:   0x%04x  DE: 0x%04x  HL: 0x%04x  AF:  0x%04x" bc de hl af
+    ]
+  where
+    [bc, de, hl, af] = fmap (\rr -> s ^. regPair rr) [RBC, RDE, RHL, RAF]
 
 reg :: Reg -> Lens' MicroState Value
 reg r = registers . lens (fixup . (!! r)) (\s v -> replace r v s)

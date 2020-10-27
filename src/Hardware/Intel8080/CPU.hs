@@ -83,21 +83,9 @@ defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
 
 type M = MaybeT (CPUM CPUState CPUOut)
 
-pretty :: M String
-pretty = zoom microState $ do
-    pc <- use pc
-    sp <- use sp
-    valueBuf <- use valueBuf
-    addrBuf <- use addrBuf
-    ~[bc, de, hl, af] <- mapM (use . regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
-    return $ unlines
-      [ printf "IR:         PC: 0x%04x  SP: 0x%04x  U1:   0x%02x  U2: 0x%04x" pc sp valueBuf addrBuf
-      , printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x" bc de hl af
-      ]
-
 traceState :: (Show a) => M a -> M a
 traceState act = do
-    s <- pretty
+    s <- zoom microState $ gets debugState
     x <- act
     trace (unlines [s, show x]) $ return x
 

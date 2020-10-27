@@ -50,12 +50,8 @@ instance MonadTrans SoftCPU where
 
 dumpState :: (MonadIO m) => SoftCPU m ()
 dumpState = do
-    pc <- use pc
-    sp <- use sp
-    ~[bc, de, hl, af] <- mapM (use . regPair . uncurry Regs) [(RB, RC), (RD, RE), (RH, RL), (RA, RFlags)]
-    lift . liftIO $ do
-        printf "IR:         PC: 0x%04x  SP: 0x%04x\n" pc sp
-        printf "BC: 0x%04x  DE: 0x%04x  HL: 0x%04x  AF: 0x%04x\n" bc de hl af
+    str <- gets debugState
+    lift . liftIO $ putStrLn str
 
 fetchByte :: (Monad m) => SoftCPU m Value
 fetchByte = do
