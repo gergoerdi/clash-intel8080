@@ -19,7 +19,10 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Except
 import Text.Printf
 
-data FlowControl = GotoNext | GotoHalt
+data FlowControl
+    = GotoNext
+    | GotoHalt
+    deriving (Show, Eq, Enum, Bounded, Generic, NFDataX, Lift)
 
 data MicroState = MicroState
     { _pc, _sp :: Addr

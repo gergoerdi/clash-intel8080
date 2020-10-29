@@ -15,7 +15,7 @@ import Control.Monad.Except
 import Control.Monad.Trans.Maybe
 import Data.Foldable (traverse_)
 import Data.Bifoldable (bitraverse_)
-import Control.Monad.Extra (whenM)
+import Control.Monad.Extra (whenM, whileM)
 import Control.Lens hiding (index)
 import Data.Wedge
 
@@ -30,20 +30,19 @@ data World m = World
     }
 
 newtype SoftCPU m a = SoftCPU
-    { unSoftCPU :: ReaderT (World m) (StateT MicroState (MaybeT m)) a }
+    { unSoftCPU :: ReaderT (World m) (StateT MicroState m) a }
     deriving newtype
-      (Functor, Applicative, Alternative, Monad,
-       MonadPlus, MonadReader (World m), MonadState MicroState)
+      (Functor, Applicative, Monad,
+       MonadReader (World m), MonadState MicroState)
 
 runSoftCPU :: (Monad m) => World m -> MicroState -> m ()
 runSoftCPU w s0 =
-    void . runMaybeT .
-    (execStateT `flip` s0) . (runReaderT `flip` w) .
+    (evalStateT `flip` s0) . (runReaderT `flip` w) .
     unSoftCPU $
-    forever nextInstr
+    whileM nextInstr
 
 instance MonadTrans SoftCPU where
-    lift = SoftCPU . lift . lift . lift
+    lift = SoftCPU . lift . lift
 
 dumpState :: (MonadIO m) => SoftCPU m ()
 dumpState = do
@@ -60,7 +59,7 @@ peekByte addr = do
     readMem <- asks readMem
     lift $ readMem addr
 
-nextInstr :: (Monad m) => SoftCPU m ()
+nextInstr :: (Monad m) => SoftCPU m Bool
 nextInstr = do
     instr <- decodeInstr <$> fetchByte
     exec instr
@@ -68,17 +67,15 @@ nextInstr = do
 interrupt :: (Monad m) => Instr -> SoftCPU m ()
 interrupt instr = whenM (use allowInterrupts) $ do
     allowInterrupts .= False
-    exec instr
+    void $ exec instr
 
-exec :: (Monad m) => Instr -> SoftCPU m ()
+exec :: (Monad m) => Instr -> SoftCPU m Bool
 exec instr = do
     let (setup, uops) = microcode instr
     addressing $ wedgeRight setup
     -- liftIO $ print (instr, uops)
     ex <- runExceptT $ mapM_ ustep uops
-    case ex of
-        Left GotoHalt -> mzero
-        _ -> return ()
+    return $ ex /= Left GotoHalt
 
 addressing :: (Monad m) => Wedge OutAddr InAddr -> SoftCPU m ()
 addressing = bitraverse_ (doWrite <=< outAddr) (doRead <=< inAddr)
