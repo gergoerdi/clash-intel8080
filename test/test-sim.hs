@@ -26,11 +26,15 @@ import Data.ByteString.Lazy (ByteString)
 
 run :: Bool -> IOArray Addr Value -> IO ByteString
 run verbose arr = do
-    let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState 0x0100, Nothing))
+    let runSim act =
+            runStateT `flip` Nothing $
+            runStateT `flip` (initInput, initState 0x0100) $
+            runStateT `flip` ((0 :: Unsigned 3)) $
+            act
 
     fmap toLazyByteString . execWriterT $ runSim $ whileM $ do
-        i <- zoom _1 counter
-        zoom _2 $ sim (mkWorld i)
+        i <- get <* modify (+ 1)
+        lift $ sim (mkWorld i)
   where
     counter = get <* modify (+ 1)
 
