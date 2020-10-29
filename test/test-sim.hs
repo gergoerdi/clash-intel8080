@@ -29,11 +29,11 @@ run verbose arr = do
     let runSim act = evalStateT act ((0 :: Unsigned 3), (initInput, initState 0x0100, Nothing))
 
     fmap toLazyByteString . execWriterT $ runSim $ whileM $ do
-        i <- use _1
-        halted <- zoom _2 $ sim (mkWorld i)
-        _1 += 1
-        return $ not halted
+        i <- zoom _1 counter
+        zoom _2 $ sim (mkWorld i)
   where
+    counter = get <* modify (+ 1)
+
     mkWorld !i = World{..}
       where
         readMem addr = do

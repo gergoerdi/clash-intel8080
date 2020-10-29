@@ -64,7 +64,7 @@ sim w = do
     out <- zoom _2 $ mapStateT (pure . runIdentity) . runCPU defaultOut $ cpu inp
     inp' <- zoom _3 $ world w out
     _1 .= inp'
-    return $ _halted out
+    return $ not $ _halted out
 
 interrupt :: (Monad m) => Unsigned 3 -> StateT (Maybe IRQ) m ()
 interrupt v = put $ Just $ NewIRQ rst
