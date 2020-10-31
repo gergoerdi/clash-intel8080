@@ -42,7 +42,7 @@ declareBareB [d|
 data CPUState = CPUState
     { _phase :: Phase
     , _interrupted :: Bool
-    , _addrLatch :: Maybe Addr
+    , _addrLatch :: Maybe (Either Port Addr)
     , _microState :: MicroState
     }
     deriving (Show, Generic, NFDataX)
@@ -68,7 +68,7 @@ makeLenses ''CPUOut
 defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
   where
-    _addrOut = Right $ fromMaybe _addrBuf _addrLatch
+    _addrOut = fromMaybe (Right _addrBuf) _addrLatch
     _dataOut = Nothing
     _interruptAck = False
     _halted = case _phase of
@@ -128,7 +128,8 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
 
 fetchNext :: CPU ()
 fetchNext = do
-    latchAddr =<< use (microState.pc)
+    addr <- Right <$> use (microState.pc)
+    addrLatch .= Just addr
     phase .= Fetching False
 
 exec :: Value -> Index MicroLen -> CPU ()
@@ -160,16 +161,7 @@ doWrite target = do
     dataOut .:= Just value
 
 doRead :: Either Port Addr -> CPU ()
-doRead target = either tellPort latchAddr target
-
-tellPort :: Value -> CPU ()
-tellPort port = do
-    addrOut .:= Left port
-
-latchAddr :: Addr -> CPU ()
-latchAddr addr = do
-    addrLatch .= Just addr
-    addrOut .:= Right addr
+doRead addr = addrLatch .= Just addr
 
 microcodeFor :: Value -> Microcode
 microcodeFor = asyncRom $(TH.lift $ map (microcode . decodeInstr . bitCoerce) $ indicesI @256)
