@@ -65,6 +65,13 @@ packages:
   original:
     hackage: barbies-th-0.1.2
 - completed:
+    hackage: monad-supply-0.9@sha256:4326f7e5fb93c471cb9ac9bc4be738ea3f7f77052bff2d7ebdf7e05172623284,1249
+    pantry-tree:
+      size: 272
+      sha256: 875719dcef5e614d5f029e26ad617f7f9f20777b98dbee8d8ca3e48d3ff5a81f
+  original:
+    hackage: monad-supply-0.9
+- completed:
     size: 24901
     subdir: smash-core
     url: https://github.com/emilypi/smash/archive/bd3ae30bdfef3f92ce5575a1ee10228830afa11b.tar.gz

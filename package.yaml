@@ -97,3 +97,5 @@ tests:
       - tasty-golden
       - filepath
       - extra
+      - QuickCheck
+      - monad-supply

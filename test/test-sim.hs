@@ -5,13 +5,14 @@ import Hardware.Intel8080.TestBench
 import Hardware.Intel8080.CPU
 import Hardware.Intel8080.Sim
 
-import Clash.Prelude hiding (lift)
+import Clash.Prelude hiding (lift, generate)
 
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Lens hiding (Index, (<.>))
 import Control.Monad.Trans.Maybe
 import Control.Monad.Extra
+import Control.Monad.Supply
 
 import Data.Array.IO
 import System.IO
@@ -20,32 +21,35 @@ import Data.Char (chr)
 
 import Test.Tasty (defaultMain, TestTree, testGroup)
 import Test.Tasty.Golden (goldenVsString, findByExtension)
+import Test.QuickCheck
 import System.FilePath ((<.>))
 import Data.ByteString.Lazy.Builder
 import Data.ByteString.Lazy (ByteString)
 
 run :: Bool -> IOArray Addr Value -> IO ByteString
 run verbose arr = do
+    accessPattern <- generate $ arbitrary `suchThat` or
+
     let runSim act =
             runStateT `flip` Nothing $
             runStateT `flip` (initInput, initState 0x0100) $
-            runStateT `flip` ((0 :: Unsigned 3)) $
+            runSupplyT `flip` cycle accessPattern $
             act
 
     fmap toLazyByteString . execWriterT $ runSim $ whileM $ do
-        i <- get <* modify (+ 1)
-        lift $ sim (mkWorld i)
+        memReady <- supply
+        lift $ sim (mkWorld memReady)
   where
-    counter = get <* modify (+ 1)
-
-    mkWorld !i = World{..}
+    mkWorld memReady = World{..}
       where
         readMem addr = do
-            guard $ i `elem` [0, 1, 2, 3, 7]
+            guard memReady
             liftIO $ readArray arr addr
         writeMem addr = liftIO . writeArray arr addr
 
-        inPort port = return 0xff
+        inPort port = do
+            guard memReady
+            return 0x00
         outPort _ = testOutPort verbose
 
 main :: IO ()
