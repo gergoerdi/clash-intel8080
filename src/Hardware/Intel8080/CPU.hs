@@ -98,10 +98,10 @@ acceptInterrupt = do
     interruptAck .:= True
 
 readByte :: Pure CPUIn -> CPU Value
-readByte CPUIn{..} = do
-    x <- MaybeT . return $ dataIn
-    addrLatch .= Nothing
-    return x
+readByte CPUIn{..} = maybe retry consume dataIn
+  where
+    retry = mzero
+    consume x = x <$ (addrLatch .= Nothing)
 
 cpu :: Pure CPUIn -> CPUM CPUState CPUOut ()
 cpu inp@CPUIn{..} = void . runMaybeT $ do
