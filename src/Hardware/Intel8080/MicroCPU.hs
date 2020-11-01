@@ -79,14 +79,14 @@ evalCond (Cond flg target) = uses (flag flg) (== target)
 {-# INLINE uexec #-}
 uexec :: (MonadState MicroState m) => MicroInstr -> ExceptT FlowControl m ()
 uexec Halt = throwError GotoHalt
-uexec (FromReg r) = assign valueBuf =<< use (reg r)
-uexec (ToReg r) = assign (reg r) =<< use valueBuf
-uexec FromAddrBuf = assign valueBuf =<< twistFrom addrBuf
-uexec FromPC = assign valueBuf =<< twistFrom pc
+uexec (FromReg r) = valueBuf <~ use (reg r)
+uexec (ToReg r) = reg r <~ use valueBuf
+uexec FromAddrBuf = valueBuf <~ twistFrom addrBuf
+uexec FromPC = valueBuf <~ twistFrom pc
 uexec ToAddrBuf = twistTo addrBuf =<< use valueBuf
-uexec (FromReg2 rp) = assign addrBuf =<< use (regPair rp)
+uexec (FromReg2 rp) = addrBuf <~ use (regPair rp)
 uexec (SwapReg2 rp) = swap addrBuf (regPair rp)
-uexec Jump = assign pc =<< use addrBuf
+uexec Jump = pc <~ use addrBuf
 uexec (When cond) = do
     passed <- maybe (pure False) evalCond cond
     unless passed $ throwError GotoNext

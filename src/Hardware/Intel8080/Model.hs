@@ -92,7 +92,7 @@ doWrite target = either writePort poke target =<< use valueBuf
         lift $ writeMem addr value
 
 doRead :: (Monad m) => Either Port Addr -> SoftCPU m ()
-doRead target = assign valueBuf =<< either readPort peekByte target
+doRead target = valueBuf <~ either readPort peekByte target
   where
     readPort port = do
         read <- asks inPort

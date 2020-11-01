@@ -120,7 +120,7 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
             load <- addressing (wedgeRight setup)
             phase .= Executing load instr 0
         Executing load instr i -> do
-            when load $ assign (microState.valueBuf) =<< readByte inp
+            when load $ microState.valueBuf <~ readByte inp
             exec instr i
         Halted -> when interrupted $ do
             acceptInterrupt
