@@ -34,11 +34,13 @@ initInput = CPUIn
 world :: (Monad m) => World (MaybeT m) -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
 world World{..} CPUOut{..} = do
     dataIn <- case _addrOut of
-        Left port ->
+        Nothing ->
+            return Nothing
+        Just (Left port) ->
             lift . runMaybeT $ maybe (inPort port) (outPort port) _dataOut
-        Right addr | _interruptAck ->
+        Just (Right addr) | _interruptAck ->
             getInterrupt
-        Right addr -> lift $ do
+        Just (Right addr) -> lift $ do
             x <- runMaybeT $ readMem addr
             runMaybeT $ traverse_ (writeMem addr) _dataOut
             return x

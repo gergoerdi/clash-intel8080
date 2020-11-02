@@ -58,7 +58,7 @@ initState pc0 = CPUState
 
 declareBareB [d|
   data CPUOut = CPUOut
-      { _addrOut :: Either Port Addr
+      { _addrOut :: Maybe (Either Port Addr)
       , _dataOut :: Maybe Value
       , _interruptAck :: Bool
       , _halted :: Bool
@@ -68,7 +68,7 @@ makeLenses ''CPUOut
 defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
   where
-    _addrOut = fromMaybe (Right _addrBuf) _addrLatch
+    _addrOut = _addrLatch
     _dataOut = Nothing
     _interruptAck = False
     _halted = case _phase of
@@ -156,7 +156,7 @@ addressing (There read) = do
 
 doWrite :: Either Port Addr -> CPU ()
 doWrite target = do
-    addrOut .:= target
+    addrOut .:= Just target
     value <- use (microState.valueBuf)
     dataOut .:= Just value
 
