@@ -126,6 +126,12 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
             acceptInterrupt
             phase .= Fetching True
 
+intel8080 :: (HiddenClockResetEnable dom) => Signals dom CPUIn -> Signals dom CPUOut
+intel8080 = intel8080From 0x0000
+
+intel8080From :: (HiddenClockResetEnable dom) => Addr -> Signals dom CPUIn -> Signals dom CPUOut
+intel8080From startAddr = mealyCPU (initState startAddr) defaultOut cpu
+
 fetchNext :: CPU ()
 fetchNext = do
     addr <- Right <$> use (microState.pc)
