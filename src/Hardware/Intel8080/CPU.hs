@@ -17,7 +17,7 @@ import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Control.Monad.Except
 import Control.Lens hiding (Index)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Wedge
 
 import Barbies
@@ -43,6 +43,7 @@ data CPUState = CPUState
     { _phase :: Phase
     , _interrupted :: Bool
     , _addrLatch :: Maybe (Either Port Addr)
+    , _dataLatch :: Maybe Value
     , _microState :: MicroState
     }
     deriving (Show, Generic, NFDataX)
@@ -53,6 +54,7 @@ initState pc0 = CPUState
     { _phase = Init
     , _interrupted = False
     , _addrLatch = Nothing
+    , _dataLatch = Nothing
     , _microState = mkMicroState pc0
     }
 
@@ -69,7 +71,7 @@ defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
   where
     _addrOut = _addrLatch
-    _dataOut = Nothing
+    _dataOut = _dataLatch
     _interruptAck = False
     _halted = case _phase of
         Halted -> True
@@ -98,14 +100,20 @@ acceptInterrupt = do
     interruptAck .:= True
 
 readByte :: Pure CPUIn -> CPU Value
-readByte CPUIn{..} = maybe retry consume dataIn
+readByte CPUIn{..} = do
+    pending <- isJust <$> use addrLatch
+    if pending then maybe retry consume dataIn else return 0
   where
     retry = mzero
-    consume x = x <$ (addrLatch .= Nothing)
+    consume x = do
+        addrLatch .= Nothing
+        dataLatch .= Nothing
+        return x
 
 cpu :: Pure CPUIn -> CPUM CPUState CPUOut ()
 cpu inp@CPUIn{..} = void . runMaybeT $ do
     interrupted <- latchInterrupt inp
+    dataRead <- readByte inp
 
     use phase >>= \case
         Init -> do
@@ -114,13 +122,13 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
             acceptInterrupt
             phase .= Fetching True
         Fetching interrupting -> do
-            instr <- readByte inp
+            let instr = dataRead
             unless interrupting $ microState.pc += 1
             let (setup, _) = microcodeFor instr
             load <- addressing (wedgeRight setup)
             phase .= Executing load instr 0
         Executing load instr i -> do
-            when load $ microState.valueBuf <~ readByte inp
+            when load $ microState.valueBuf .= dataRead
             exec instr i
         Halted -> when interrupted $ do
             acceptInterrupt
@@ -162,9 +170,9 @@ addressing (There read) = do
 
 doWrite :: Either Port Addr -> CPU ()
 doWrite target = do
-    addrOut .:= Just target
-    value <- use (microState.valueBuf)
-    dataOut .:= Just value
+    addrLatch .= Just target
+    value <- use $ microState.valueBuf
+    dataLatch .= Just value
 
 doRead :: Either Port Addr -> CPU ()
 doRead addr = addrLatch .= Just addr
