@@ -102,7 +102,7 @@ acceptInterrupt = do
 readByte :: Pure CPUIn -> CPU Value
 readByte CPUIn{..} = do
     pending <- isJust <$> use addrLatch
-    if pending then maybe retry consume dataIn else return 0
+    if pending then maybe retry consume dataIn else return $ fromJustX dataIn
   where
     retry = mzero
     consume x = do
