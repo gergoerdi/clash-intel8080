@@ -95,7 +95,9 @@ popPC = pop2 >++> step INothing Jump INothing
 
 type MicroOp = (MicroInstr, Wedge OutAddr InAddr)
 type MicroLen = 8
-type Microcode = (Maybe InAddr, Vec MicroLen MicroOp)
+type Setup = Maybe InAddr
+type MicroOps = Vec MicroLen MicroOp
+type Microcode = (Setup, MicroOps)
 
 mc :: (KnownNat k, (n + k) ~ MicroLen) => MicroSteps n pre post -> Microcode
 mc ops = let (first, ops') = stepsOf ops

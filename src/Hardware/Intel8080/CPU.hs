@@ -124,7 +124,7 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
         Fetching interrupting -> do
             let instr = dataRead
             unless interrupting $ microState.pc += 1
-            let (setup, _) = microcodeFor instr
+            let setup = setupFor instr
             load <- addressing (wedgeRight setup)
             phase .= Executing load instr 0
         Executing load instr i -> do
@@ -148,7 +148,7 @@ fetchNext = do
 
 exec :: Value -> Index MicroLen -> CPU ()
 exec instr i = do
-    let (uop, teardown) = snd (microcodeFor instr) !! i
+    let (uop, teardown) = microcodeFor instr !! i
     -- traceShow (i, uop, teardown) $ return ()
     runExceptT (zoom microState $ uexec uop) >>= \case
         Left GotoNext -> do
@@ -177,5 +177,8 @@ doWrite target = do
 doRead :: Either Port Addr -> CPU ()
 doRead addr = addrLatch .= Just addr
 
-microcodeFor :: Value -> Microcode
-microcodeFor = asyncRom $(TH.lift $ map (microcode . decodeInstr . bitCoerce) $ indicesI @256)
+microcodeFor :: Value -> MicroOps
+microcodeFor = asyncRom $(TH.lift $ map (snd . microcode . decodeInstr . bitCoerce) $ indicesI @256)
+
+setupFor :: Value -> Setup
+setupFor = asyncRom $(TH.lift $ map (fst . microcode . decodeInstr . bitCoerce) $ indicesI @256)
