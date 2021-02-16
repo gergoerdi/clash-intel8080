@@ -15,11 +15,12 @@ import Clash.Prelude hiding (lift)
 
 import RetroClash.Barbies
 import RetroClash.CPU
+import RetroClash.Utils
 
 import Control.Monad.Trans.Maybe
 import Control.Monad.State
 import Data.Foldable (traverse_, for_)
-import Control.Lens hiding (index)
+import Control.Lens hiding (index, Index)
 
 data IRQ
     = NewIRQ Value
@@ -32,7 +33,7 @@ initInput = CPUIn
     , interruptRequest = False
     }
 
-world :: (Monad m) => World (MaybeT m) -> Pure CPUOut -> StateT (Maybe IRQ) m (Pure CPUIn)
+world :: (Monad m) => World (MaybeT m) -> Pure CPUOut -> StateT (Maybe IRQ, Index 7) m (Pure CPUIn)
 world World{..} CPUOut{..} = do
     dataIn <- case _addrOut of
         Nothing ->
@@ -46,23 +47,25 @@ world World{..} CPUOut{..} = do
             runMaybeT $ traverse_ (writeMem addr) _dataOut
             return x
     interruptRequest <- newInterrupt
-    pause <- pure False
+    pause <- zoom _2 $ do
+        x <- get <* modify nextIdx
+        return $ x /= 0
 
     return CPUIn{..}
   where
-    getInterrupt = get >>= \case
+    getInterrupt = zoom _1 $ get >>= \case
         Just (QueuedIRQ op) -> do
             put Nothing
             return $ Just op
         _ -> return $ Just 0x00
 
-    newInterrupt = get >>= \case
+    newInterrupt = zoom _1 $ get >>= \case
         Just (NewIRQ op) -> do
             put $ Just $ QueuedIRQ op
             return True
         _ -> return False
 
-sim :: (Monad m) => World (MaybeT m) -> StateT (Pure CPUIn, CPUState) (StateT (Maybe IRQ) m) Bool
+sim :: (Monad m) => World (MaybeT m) -> StateT (Pure CPUIn, CPUState) (StateT (Maybe IRQ, Index 7) m) Bool
 sim w = do
     (inp, s) <- get
     let (out, s') = runState (runCPU defaultOut $ cpu inp) s
