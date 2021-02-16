@@ -27,7 +27,8 @@ data IRQ
 
 initInput :: Pure CPUIn
 initInput = CPUIn
-    { dataIn = Nothing
+    { pause = False
+    , dataIn = Nothing
     , interruptRequest = False
     }
 
@@ -45,6 +46,7 @@ world World{..} CPUOut{..} = do
             runMaybeT $ traverse_ (writeMem addr) _dataOut
             return x
     interruptRequest <- newInterrupt
+    pause <- pure False
 
     return CPUIn{..}
   where

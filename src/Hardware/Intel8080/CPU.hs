@@ -35,7 +35,8 @@ data Phase
 
 declareBareB [d|
   data CPUIn = CPUIn
-    { dataIn :: Maybe Value
+    { pause :: Bool
+    , dataIn :: Maybe Value
     , interruptRequest :: Bool
     } |]
 
@@ -43,7 +44,8 @@ data CPUState = CPUState
     { _phase :: Phase
     , _interrupted :: Bool
     , _addrLatch :: Maybe (Either Port Addr)
-    , _dataLatch :: Maybe Value
+    , _dataOutLatch :: Maybe Value
+    , _dataInLatch :: Maybe Value
     , _microState :: MicroState
     }
     deriving (Show, Generic, NFDataX)
@@ -54,7 +56,8 @@ initState pc0 = CPUState
     { _phase = Init
     , _interrupted = False
     , _addrLatch = Nothing
-    , _dataLatch = Nothing
+    , _dataOutLatch = Nothing
+    , _dataInLatch = Nothing
     , _microState = mkMicroState pc0
     }
 
@@ -71,7 +74,7 @@ defaultOut :: CPUState -> Pure CPUOut
 defaultOut CPUState{_microState = MicroState{..}, ..} = CPUOut{..}
   where
     _addrOut = _addrLatch
-    _dataOut = _dataLatch
+    _dataOut = _dataOutLatch
     _interruptAck = False
     _halted = case _phase of
         Halted -> True
@@ -102,18 +105,25 @@ acceptInterrupt = do
 readByte :: Pure CPUIn -> CPU Value
 readByte CPUIn{..} = do
     pending <- isJust <$> use addrLatch
-    if pending then maybe retry consume dataIn else return $ fromJustX dataIn
+    current <- if pending then Just <$> maybe restart consume dataIn else return dataIn
+    latched <- use dataInLatch
+    let latest = current <|> latched
+    dataInLatch .= latest
+    return $ fromJustX latest
   where
-    retry = mzero
+    restart = empty
     consume x = do
         addrLatch .= Nothing
-        dataLatch .= Nothing
+        dataOutLatch .= Nothing
         return x
 
 cpu :: Pure CPUIn -> CPUM CPUState CPUOut ()
 cpu inp@CPUIn{..} = void . runMaybeT $ do
     interrupted <- latchInterrupt inp
     dataRead <- readByte inp
+
+    guard $ not pause
+    dataInLatch .= Nothing
 
     use phase >>= \case
         Init -> do
@@ -173,7 +183,7 @@ doWrite :: Either Port Addr -> CPU ()
 doWrite target = do
     addrLatch .= Just target
     value <- use $ microState.valueBuf
-    dataLatch .= Just value
+    dataOutLatch .= Just value
 
 doRead :: Either Port Addr -> CPU ()
 doRead addr = addrLatch .= Just addr
