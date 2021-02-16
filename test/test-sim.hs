@@ -31,7 +31,7 @@ run verbose arr = do
     accessPattern <- generate $ arbitrary `suchThat` or
 
     let runSim act =
-            runStateT `flip` Nothing $
+            runStateT `flip` (Nothing, 0) $
             runStateT `flip` (initInput, initState 0x0100) $
             runSupplyT `flip` cycle accessPattern $
             act
