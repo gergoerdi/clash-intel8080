@@ -90,7 +90,7 @@ uexec Jump = pc <~ use addrBuf
 uexec (When cond) = do
     passed <- evalCond cond
     unless passed $ throwError GotoNext
-uexec (Compute arg fun updateAC updateC) = do
+uexec (Compute arg fun updateZSP updateAC updateC) = do
     x <- case arg of
         RegA -> use (reg RA)
         AddrLo -> truncateB <$> use addrBuf
@@ -100,6 +100,10 @@ uexec (Compute arg fun updateAC updateC) = do
     c <- use (flag FC)
     y <- use valueBuf
     let (ac', c', y') = binALU fun x (ac, c, y)
+    when (updateZSP == SetZSP) $ do
+        flag FZ .= (y' == 0)
+        flag FS .= y' `testBit` 7
+        flag FP .= even (popCount y')
     when (updateAC == SetAC) $ flag FAC .= ac'
     when (updateC == SetC) $ flag FC .= c'
     valueBuf .= y'
@@ -120,11 +124,6 @@ uexec (Compute0 flg fun) = do
         Complement -> complement
 uexec (Rst rst) = pc .= extend rst `shiftL` 3
 uexec (SetInt b) = allowInterrupts .= b
-uexec UpdateFlags = do
-    x <- use valueBuf
-    flag FZ .= (x == 0)
-    flag FS .= x `testBit` 7
-    flag FP .= even (popCount x)
 
 twist :: Addr -> (Value, Addr)
 twist x = (hi, lohi)

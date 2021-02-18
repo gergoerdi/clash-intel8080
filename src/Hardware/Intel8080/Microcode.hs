@@ -20,6 +20,11 @@ data OutAddr
     | DecrSP
     deriving (Show, Eq, Enum, Bounded, Generic, NFDataX, Lift)
 
+data UpdateZSP
+    = SetZSP
+    | KeepZSP
+    deriving (Show, Eq, Generic, NFDataX, Lift)
+
 data UpdateAC
     = SetAC
     | KeepAC
@@ -40,11 +45,10 @@ data MicroInstr
     | SwapReg2 RegPair
     | Jump
     | When Cond
-    | Compute ALUArg ALU UpdateAC UpdateC
+    | Compute ALUArg ALU UpdateZSP UpdateAC UpdateC
     | ComputeSR (Either ShiftRotate ShiftRotate)
     | Compute2 ALU2
     | Compute0 Flag ALU0
-    | UpdateFlags
     | Rst (Unsigned 3)
     | SetInt Bool
     | Halt
@@ -133,20 +137,18 @@ microcode NOP = padded $ step INothing nop INothing
 microcode HLT = padded $ step INothing Halt INothing
 microcode (INT b) = padded $ step INothing (SetInt b) INothing
 microcode CMA = padded $
-    step INothing (FromReg RA)                               INothing >++>
-    step INothing (Compute ConstFF (Sub False) KeepAC KeepC) INothing >++>
-    step INothing (ToReg RA)                                 INothing
+    step INothing (FromReg RA)                                       INothing >++>
+    step INothing (Compute ConstFF (Sub False) KeepZSP KeepAC KeepC) INothing >++>
+    step INothing (ToReg RA)                                         INothing
 microcode CMC = padded $
     step INothing (Compute0 FC Complement) INothing
 microcode STC = padded $
     step INothing (Compute0 FC ConstTrue) INothing
 microcode (ALU fun src) = withRHS src $ \read ->
-    step read     (Compute RegA fun SetAC SetC) INothing >++>
-    step INothing UpdateFlags                   INothing >++>
-    step INothing (ToReg RA)                    INothing
+    step read     (Compute RegA fun SetZSP SetAC SetC) INothing >++>
+    step INothing (ToReg RA)                           INothing
 microcode (CMP src) = withRHS src $ \read ->
-    step read     (Compute RegA (Sub False) SetAC SetC) INothing >++>
-    step INothing UpdateFlags                           INothing
+    step read     (Compute RegA (Sub False) SetZSP SetAC SetC) INothing
 microcode (SHROT sr) = padded $
     step INothing (FromReg RA)   INothing >++>
     step INothing (ComputeSR sr) INothing >++>
@@ -191,34 +193,30 @@ microcode (INX rr) = padded $
     step INothing (Compute2 Inc) INothing >++>
     step INothing (SwapReg2 rr)  INothing
 microcode (DAD rr) = padded $
-    step INothing (FromReg2 rr)                            INothing >++>
-    step INothing (FromReg RL)                             INothing >++>
-    step INothing (Compute AddrLo (Add False) KeepAC SetC) INothing >++>
-    step INothing ToAddrBuf                                INothing >++>
-    step INothing (FromReg RH)                             INothing >++>
-    step INothing (Compute AddrLo (Add True)  KeepAC SetC) INothing >++>
-    step INothing ToAddrBuf                                INothing >++>
-    step INothing (SwapReg2 RHL)                           INothing
+    step INothing (FromReg2 rr)                                    INothing >++>
+    step INothing (FromReg RL)                                     INothing >++>
+    step INothing (Compute AddrLo (Add False) KeepZSP KeepAC SetC) INothing >++>
+    step INothing ToAddrBuf                                        INothing >++>
+    step INothing (FromReg RH)                                     INothing >++>
+    step INothing (Compute AddrLo (Add True)  KeepZSP KeepAC SetC) INothing >++>
+    step INothing ToAddrBuf                                        INothing >++>
+    step INothing (SwapReg2 RHL)                                   INothing
 microcode (INR (Addr rr)) = padded $
-    step INothing        (FromReg2 rr)                             INothing      >++>
-    step (IJust FromPtr) (Compute Const01 (Add False) SetAC KeepC) INothing      >++>
-    step INothing        UpdateFlags                               (IJust ToPtr) >++>
-    step INothing        nop                                       INothing
+    step INothing        (FromReg2 rr)                                    INothing      >++>
+    step (IJust FromPtr) (Compute Const01 (Add False) SetZSP SetAC KeepC) (IJust ToPtr) >++>
+    step INothing        nop                                              INothing
 microcode (INR (Reg r)) = padded $
-    step INothing (FromReg r)                               INothing >++>
-    step INothing (Compute Const01 (Add False) SetAC KeepC) INothing >++>
-    step INothing UpdateFlags                               INothing >++>
-    step INothing (ToReg r)                                 INothing
+    step INothing (FromReg r)                                      INothing >++>
+    step INothing (Compute Const01 (Add False) SetZSP SetAC KeepC) INothing >++>
+    step INothing (ToReg r)                                        INothing
 microcode (DCR (Addr rr)) = padded $
-    step INothing        (FromReg2 rr)                             INothing      >++>
-    step (IJust FromPtr) (Compute ConstFF (Add False) SetAC KeepC) INothing      >++>
-    step INothing        UpdateFlags                               (IJust ToPtr) >++>
-    step INothing        nop                                       INothing
+    step INothing        (FromReg2 rr)                                    INothing      >++>
+    step (IJust FromPtr) (Compute ConstFF (Add False) SetZSP SetAC KeepC) (IJust ToPtr) >++>
+    step INothing        nop                                              INothing
 microcode (DCR (Reg r)) = padded $
-    step INothing (FromReg r)                               INothing >++>
-    step INothing (Compute ConstFF (Add False) SetAC KeepC) INothing >++>
-    step INothing UpdateFlags                               INothing >++>
-    step INothing (ToReg r)                                 INothing
+    step INothing (FromReg r)                                      INothing >++>
+    step INothing (Compute ConstFF (Add False) SetZSP SetAC KeepC) INothing >++>
+    step INothing (ToReg r)                                        INothing
 microcode (LXI rr) = padded $
     imm2 >++>
     step INothing (SwapReg2 rr) INothing
