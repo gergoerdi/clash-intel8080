@@ -98,7 +98,7 @@ popPC :: MicroSteps 3 True False
 popPC = pop2 >++> step INothing Jump INothing
 
 type MicroOp = ((MicroInstr, Wedge OutAddr InAddr), Bool)
-type MicroLen = 18
+type MicroLen = 17
 type Setup = Maybe InAddr
 type MicroOps = Vec MicroLen MicroOp
 type Microcode = (Setup, MicroOps)
@@ -115,7 +115,7 @@ nop = FromReg RA
 
 padded
     :: forall k n p pre post. (KnownNat k, KnownNat p, (n + 1 + p + k) ~ MicroLen)
-    => SNat (n + 1 + p)
+    => SNat (n + 1 + p + 1)
     -> MicroSteps (n + 1) pre False
     -> Microcode
 padded SNat ops = (first, withCont (uops ++ nops1) ++ nops2)
@@ -178,7 +178,7 @@ microcode CALL = padded (SNat @17) $
     pushPC >++>
     step INothing Jump INothing
 microcode (CALLIf cond) = padded (SNat @17) $
-    -- padding (SNat @8)                  >++>
+    padding (SNat @7)                  >++>
     imm2                               >++>
     step INothing (When cond) INothing >++>
     pushPC                             >++>
@@ -186,7 +186,7 @@ microcode (CALLIf cond) = padded (SNat @17) $
 microcode RET = padded (SNat @10) $
     popPC
 microcode (RETIf cond) = padded (SNat @11) $
-    -- padding (SNat @4)                  >++>
+    padding (SNat @3)                  >++>
     step INothing (When cond) INothing >++>
     popPC
 microcode LDA = padded (SNat @13) $
