@@ -8,6 +8,7 @@ module Hardware.Intel8080.Steps where
 
 import Clash.Prelude
 import Data.Wedge
+import Data.Kind
 
 data IMaybe (isJust :: Bool) a where
     INothing :: IMaybe False a
@@ -23,7 +24,7 @@ class Impossible where
 
 type family Compat post1 pre2 where
     Compat True True = (TypeError (Text "Conflict between postamble and next preamble"), Impossible)
-    Compat post1 pre2 = ()
+    Compat post1 pre2 = (() :: Constraint)
 
 data Step pre a post hasPre hasPost where
     Step :: IMaybe hasPre pre -> a -> IMaybe hasPost post -> Step pre a post hasPre hasPost
