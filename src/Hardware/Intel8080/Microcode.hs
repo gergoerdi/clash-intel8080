@@ -68,7 +68,6 @@ data ALU2
 data ALU0
     = Complement
     | ConstTrue
-    | ConstFalse
     deriving (Show, Generic, NFDataX, Lift)
 
 type MicroSteps = Steps InAddr MicroInstr OutAddr
