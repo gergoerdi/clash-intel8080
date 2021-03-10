@@ -120,7 +120,6 @@ uexec (Compute2 fun) = do
 uexec (Compute0 flg fun) = do
     flag flg %= case fun of
         ConstTrue -> const True
-        ConstFalse -> const False
         Complement -> complement
 uexec (Rst rst) = pc .= extend rst `shiftL` 3
 uexec (SetInt b) = allowInterrupts .= b
