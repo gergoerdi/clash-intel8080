@@ -11,28 +11,28 @@ data InAddr
     | FromPort
     | IncrPC
     | IncrSP
-    deriving (Show, Eq, Enum, Bounded, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Enum, Bounded, Generic, NFDataX, Lift)
 
 data OutAddr
     = ToPtr
     | ToPort
     | DecrSP
-    deriving (Show, Eq, Enum, Bounded, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Enum, Bounded, Generic, NFDataX, Lift)
 
 data UpdateZSP
     = SetZSP
     | KeepZSP
-    deriving (Show, Eq, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 data UpdateAC
     = SetAC
     | KeepAC
-    deriving (Show, Eq, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 data UpdateC
     = SetC
     | KeepC
-    deriving (Show, Eq, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 data MicroInstr
     = FromReg Reg
@@ -51,24 +51,24 @@ data MicroInstr
     | Rst (Unsigned 3)
     | SetInt Bool
     | Halt
-    deriving (Show, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 data ALUArg
     = RegA
     | AddrLo
     | Const01
     | ConstFF
-    deriving (Show, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 data ALU2
     = Inc
     | Dec
-    deriving (Show, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 data ALU0
     = Complement
     | ConstTrue
-    deriving (Show, Generic, NFDataX, Lift)
+    deriving (Show, Eq, Ord, Generic, NFDataX, Lift)
 
 type MicroSteps = Steps InAddr MicroInstr OutAddr
 
