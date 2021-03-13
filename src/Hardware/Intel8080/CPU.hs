@@ -107,7 +107,7 @@ readByte CPUIn{..} = do
     pending <- isJust <$> use addrLatch
     current <- if pending then Just <$> maybe restart consume dataIn else return dataIn
     latched <- use dataInLatch
-    let latest = current <|> latched
+    let latest = latched <|> current
     dataInLatch .= latest
     return $ fromJustX latest
   where
