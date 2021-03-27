@@ -170,6 +170,7 @@ microcode JMP = padded (SNat @10) $
     step INothing Jump INothing
 microcode (JMPIf cond) = padded (SNat @10) $
     imm2                               >++>
+    padding (SNat @5)                  >++>
     step INothing (When cond) INothing >++>
     step INothing Jump        INothing
 microcode CALL = padded (SNat @17) $
