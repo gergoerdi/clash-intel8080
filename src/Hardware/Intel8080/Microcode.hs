@@ -178,7 +178,7 @@ microcode CALL = padded (SNat @17) $
     pushPC >++>
     step INothing Jump INothing
 microcode (CALLIf cond) = padded (SNat @17) $
-    padding (SNat @7)                  >++>
+    padding (SNat @6)                  >++>
     imm2                               >++>
     step INothing (When cond) INothing >++>
     pushPC                             >++>
@@ -186,7 +186,7 @@ microcode (CALLIf cond) = padded (SNat @17) $
 microcode RET = padded (SNat @10) $
     popPC
 microcode (RETIf cond) = padded (SNat @11) $
-    padding (SNat @3)                  >++>
+    padding (SNat @2)                  >++>
     step INothing (When cond) INothing >++>
     popPC
 microcode LDA = padded (SNat @13) $
