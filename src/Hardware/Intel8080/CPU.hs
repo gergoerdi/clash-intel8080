@@ -162,7 +162,7 @@ exec instr i = do
     -- traceShow (i, uop, teardown, cont) $ return ()
     runExceptT (zoom microState $ uexec uop) >>= \case
         Left GotoNext -> do
-            fetchNext
+            phase .= Init
         Left GotoHalt -> do
             phase .= Halted
         Right () -> do
