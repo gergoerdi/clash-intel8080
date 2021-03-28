@@ -88,7 +88,7 @@ uexec (FromReg2 rp) = addrBuf <~ use (regPair rp)
 uexec (SwapReg2 rp) = swap addrBuf (regPair rp)
 uexec Jump = pc <~ use addrBuf
 uexec (When cond) = do
-    passed <- maybe (pure False) evalCond cond
+    passed <- evalCond cond
     unless passed $ throwError GotoNext
 uexec (Compute arg fun updateAC updateC) = do
     x <- case arg of
