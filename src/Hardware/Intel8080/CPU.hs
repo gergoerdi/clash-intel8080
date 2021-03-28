@@ -148,8 +148,8 @@ fetchNext = do
 
 exec :: Value -> Index MicroLen -> CPU ()
 exec instr i = do
-    let (uop, teardown) = microcodeFor instr !! i
-    -- traceShow (i, uop, teardown) $ return ()
+    let ((uop, teardown), cont) = microcodeFor instr !! i
+    -- traceShow (i, uop, teardown, cont) $ return ()
     runExceptT (zoom microState $ uexec uop) >>= \case
         Left GotoNext -> do
             fetchNext
@@ -157,7 +157,8 @@ exec instr i = do
             phase .= Halted
         Right () -> do
             load <- addressing teardown
-            maybe fetchNext (assign phase . Executing load instr) $ succIdx i
+            let i' = guard cont *> succIdx i
+            maybe fetchNext (assign phase . Executing load instr) i'
 
 addressing :: Wedge OutAddr InAddr -> CPU Bool
 addressing Nowhere = return False

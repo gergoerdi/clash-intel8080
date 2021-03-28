@@ -99,6 +99,7 @@ doRead target = valueBuf <~ either readPort peekByte target
         lift $ read port
 
 ustep :: (Monad m) => MicroOp -> ExceptT FlowControl (SoftCPU m) ()
-ustep (effect, post) = do
+ustep ((effect, post), cont) = do
     uexec effect
     lift $ addressing post
+    unless cont $ throwError GotoNext

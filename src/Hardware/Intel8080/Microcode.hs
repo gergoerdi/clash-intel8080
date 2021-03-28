@@ -94,7 +94,7 @@ pop2 =
 popPC :: MicroSteps 3 True False
 popPC = pop2 >++> step INothing Jump INothing
 
-type MicroOp = (MicroInstr, Wedge OutAddr InAddr)
+type MicroOp = ((MicroInstr, Wedge OutAddr InAddr), Bool)
 type MicroLen = 8
 type Setup = Maybe InAddr
 type MicroOps = Vec MicroLen MicroOp
@@ -104,10 +104,13 @@ nop :: MicroInstr
 nop = FromReg RA
 
 padded :: (KnownNat k, KnownNat n, ((n + 1) + k) ~ MicroLen) => MicroSteps (n + 1) pre False -> Microcode
-padded ops = (first, uops ++ nops)
+padded ops = (first, withCont uops ++ nops)
   where
     (first, uops) = stepsOf ops
-    nops = repeat (nop, Nowhere)
+    nops = repeat ((nop, Nowhere), False)
+
+withCont :: (KnownNat n) => Vec (n + 1) a -> Vec (n + 1) (a, Bool)
+withCont xs = zip xs $ repeat True :< False
 
 withRHS
     :: (KnownNat n, KnownNat k, (n + 1 + k) ~ MicroLen)
