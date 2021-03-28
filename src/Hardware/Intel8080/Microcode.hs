@@ -75,10 +75,11 @@ imm2 =
     step (IJust IncrPC) ToAddrBuf INothing >++>
     step (IJust IncrPC) ToAddrBuf INothing
 
-push2 :: MicroSteps 2 False True
+push2 :: MicroSteps 3 False False
 push2 =
     step INothing FromAddrBuf (IJust DecrSP) >++>
-    step INothing FromAddrBuf (IJust DecrSP)
+    step INothing FromAddrBuf (IJust DecrSP) >++>
+    step INothing nop         INothing
 
 pushPC :: MicroSteps 2 False True
 pushPC =
@@ -102,7 +103,7 @@ type Microcode = (Setup, MicroOps)
 nop :: MicroInstr
 nop = FromReg RA
 
-padded :: (KnownNat k, KnownNat n, ((n + 1) + k) ~ MicroLen) => MicroSteps (n + 1) pre post -> Microcode
+padded :: (KnownNat k, KnownNat n, ((n + 1) + k) ~ MicroLen) => MicroSteps (n + 1) pre False -> Microcode
 padded ops = (first, uops ++ nops)
   where
     (first, uops) = stepsOf ops
@@ -112,7 +113,7 @@ withRHS
     :: (KnownNat n, KnownNat k, (n + 1 + k) ~ MicroLen)
     => (KnownNat k', (1 + n + 1 + k') ~ MicroLen)
     => RHS
-    -> (forall pre. IMaybe pre InAddr -> MicroSteps (n + 1) pre post)
+    -> (forall pre. IMaybe pre InAddr -> MicroSteps (n + 1) pre False)
     -> Microcode
 withRHS rhs k = case rhs of
     Imm -> padded $
@@ -176,7 +177,8 @@ microcode LDA = padded $
     step (IJust FromPtr) (ToReg RA) INothing
 microcode STA = padded $
     imm2 >++>
-    step INothing (FromReg RA) (IJust ToPtr)
+    step INothing (FromReg RA) (IJust ToPtr) >++>
+    step INothing nop          INothing
 microcode (DCX rr) = padded $
     step INothing (FromReg2 rr)  INothing >++>
     step INothing (Compute2 Dec) INothing >++>
@@ -195,18 +197,20 @@ microcode (DAD rr) = padded $
     step INothing ToAddrBuf                                INothing >++>
     step INothing (SwapReg2 RHL)                           INothing
 microcode (INR (Addr rr)) = padded $
-    step INothing        (FromReg2 rr)                             INothing >++>
-    step (IJust FromPtr) (Compute Const01 (Add False) SetAC KeepC) INothing >++>
-    step INothing        UpdateFlags                               (IJust ToPtr)
+    step INothing        (FromReg2 rr)                             INothing      >++>
+    step (IJust FromPtr) (Compute Const01 (Add False) SetAC KeepC) INothing      >++>
+    step INothing        UpdateFlags                               (IJust ToPtr) >++>
+    step INothing        nop                                       INothing
 microcode (INR (Reg r)) = padded $
     step INothing (FromReg r)                               INothing >++>
     step INothing (Compute Const01 (Add False) SetAC KeepC) INothing >++>
     step INothing UpdateFlags                               INothing >++>
     step INothing (ToReg r)                                 INothing
 microcode (DCR (Addr rr)) = padded $
-    step INothing        (FromReg2 rr)                             INothing >++>
-    step (IJust FromPtr) (Compute ConstFF (Add False) SetAC KeepC) INothing >++>
-    step INothing        UpdateFlags                               (IJust ToPtr)
+    step INothing        (FromReg2 rr)                             INothing      >++>
+    step (IJust FromPtr) (Compute ConstFF (Add False) SetAC KeepC) INothing      >++>
+    step INothing        UpdateFlags                               (IJust ToPtr) >++>
+    step INothing        nop                                       INothing
 microcode (DCR (Reg r)) = padded $
     step INothing (FromReg r)                               INothing >++>
     step INothing (Compute ConstFF (Add False) SetAC KeepC) INothing >++>
@@ -230,7 +234,8 @@ microcode SHLD = padded $
     imm2 >++>
     step INothing (FromReg RL)   (IJust ToPtr) >++>
     step INothing (Compute2 Inc) INothing      >++>
-    step INothing (FromReg RH)   (IJust ToPtr)
+    step INothing (FromReg RH)   (IJust ToPtr) >++>
+    step INothing nop            INothing
 microcode XTHL = padded $
     pop2 >++>
     step INothing (SwapReg2 RHL) INothing >++>
@@ -244,7 +249,8 @@ microcode (POP rr) = padded $
 microcode (MOV (Reg r) src) = withRHS src $ \read ->
     step read (ToReg r) INothing
 microcode (MOV (Addr rr) src) = withRHS src $ \read ->
-    step read (FromReg2 rr) (IJust ToPtr)
+    step read     (FromReg2 rr) (IJust ToPtr) >++>
+    step INothing nop           INothing
 microcode XCHG = padded $
     step INothing (FromReg2 RHL) INothing >++>
     step INothing (SwapReg2 RDE) INothing >++>
@@ -253,6 +259,7 @@ microcode IN = padded $
     step (IJust IncrPC)   ToAddrBuf  INothing >++>
     step (IJust FromPort) (ToReg RA) INothing
 microcode OUT = padded $
-    step (IJust IncrPC) ToAddrBuf    INothing >++>
-    step INothing       (FromReg RA) (IJust ToPort)
+    step (IJust IncrPC) ToAddrBuf    INothing       >++>
+    step INothing       (FromReg RA) (IJust ToPort) >++>
+    step INothing       nop          INothing
 -- microcode instr = errorX $ show instr
