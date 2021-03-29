@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 module Hardware.Intel8080.Microcode where
 
 import Clash.Prelude
@@ -116,21 +115,23 @@ padded ops = (first, withCont uops ++ nops)
 withCont :: (KnownNat n) => Vec (n + 1) a -> Vec (n + 1) (a, Bool)
 withCont xs = zip xs $ repeat True :< False
 
-withRHS
-    :: (KnownNat n, KnownNat k, (n + 1 + k) ~ MicroLen)
-    => (KnownNat k', (1 + n + 1 + k') ~ MicroLen)
-    => RHS
-    -> (forall pre. IMaybe pre InAddr -> MicroSteps (n + 1) pre False)
+alu
+    :: ALU
+    -> RHS
+    -> MicroInstr
     -> Microcode
-withRHS rhs k = case rhs of
+alu fun rhs writeback = case rhs of
     Imm -> padded $
-        k (IJust IncrPC)
+        step (IJust IncrPC) (Compute RegA fun SetZSP SetAC SetC)  INothing >++>
+        step INothing       writeback                             INothing
     LHS (Reg r) -> padded $
-        step INothing (FromReg r) INothing >++>
-        k INothing
+        step INothing (FromReg r)                                 INothing >++>
+        step INothing (Compute RegA fun SetZSP SetAC SetC)        INothing >++>
+        step INothing writeback                                   INothing
     LHS (Addr rr) -> padded $
-        step INothing (FromReg2 rr) INothing >++>
-        k (IJust FromPtr)
+        step INothing        (FromReg2 rr)                        INothing >++>
+        step (IJust FromPtr) (Compute RegA fun SetZSP SetAC SetC) INothing >++>
+        step INothing        writeback                            INothing
 
 microcode :: Instr -> Microcode
 microcode NOP = padded $ step INothing nop INothing
@@ -144,11 +145,8 @@ microcode CMC = padded $
     step INothing (Compute0 FC Complement) INothing
 microcode STC = padded $
     step INothing (Compute0 FC ConstTrue) INothing
-microcode (ALU fun src) = withRHS src $ \read ->
-    step read     (Compute RegA fun SetZSP SetAC SetC) INothing >++>
-    step INothing (ToReg RA)                           INothing
-microcode (CMP src) = withRHS src $ \read ->
-    step read     (Compute RegA (Sub False) SetZSP SetAC SetC) INothing
+microcode (ALU fun rhs) = alu fun rhs (ToReg RA)
+microcode (CMP rhs) = alu (Sub False) rhs nop
 microcode (SHROT sr) = padded $
     step INothing (FromReg RA)   INothing >++>
     step INothing (ComputeSR sr) INothing >++>
@@ -247,11 +245,27 @@ microcode (PUSH rr) = padded $
 microcode (POP rr) = padded $
     pop2 >++>
     step INothing (SwapReg2 rr) INothing
-microcode (MOV (Reg r) src) = withRHS src $ \read ->
-    step read (ToReg r) INothing
-microcode (MOV (Addr rr) src) = withRHS src $ \read ->
-    step read     (FromReg2 rr) (IJust ToPtr) >++>
-    step INothing nop           INothing
+microcode (MOV (Reg r) rhs) = case rhs of
+    Imm -> padded $
+        step (IJust IncrPC) (ToReg r) INothing
+    LHS (Reg r') -> padded $
+        step INothing (FromReg r') INothing >++>
+        step INothing (ToReg r)    INothing
+    LHS (Addr rr) -> padded $
+        step INothing        (FromReg2 rr) INothing >++>
+        step (IJust FromPtr) (ToReg r)     INothing
+microcode (MOV (Addr rr) rhs) = case rhs of
+    Imm -> padded $
+        step (IJust IncrPC) (FromReg2 rr) (IJust ToPtr) >++>
+        step INothing       nop           INothing
+    LHS (Reg r) -> padded $
+        step INothing (FromReg r)   INothing      >++>
+        step INothing (FromReg2 rr) (IJust ToPtr) >++>
+        step INothing nop           INothing
+    LHS (Addr rr') -> padded $
+        step INothing        (FromReg2 rr') INothing      >++>
+        step (IJust FromPtr) (FromReg2 rr)  (IJust ToPtr) >++>
+        step INothing        nop            INothing
 microcode XCHG = padded $
     step INothing (FromReg2 RHL) INothing >++>
     step INothing (SwapReg2 RDE) INothing >++>
