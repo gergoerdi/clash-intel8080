@@ -27,7 +27,7 @@ import Data.Barbie.TH
 import qualified Language.Haskell.TH.Syntax as TH
 import Debug.Trace
 
-type MicroSize = 547
+type MicroSize = $(microSize)
 type MicroPtr = Index MicroSize
 
 data Phase
@@ -191,10 +191,8 @@ doWrite target = do
 doRead :: Either Port Addr -> CPU ()
 doRead addr = addrLatch .= Just addr
 
-microcodeAt :: MicroPtr -> ((MicroInstr, Wedge OutAddr InAddr), Maybe MicroPtr)
-microcodeAt = asyncRom @547
-    $(listToVecTH @((MicroInstr, Wedge OutAddr InAddr), Maybe (Index 547)) $
-      fmap (\(x, next) -> (x, fromIntegral <$> next)) $ compress microcodes)
+microcodeAt :: MicroPtr -> (MicroOp, Maybe MicroPtr)
+microcodeAt = asyncRom @MicroSize $(listToVecTH compressedMicrocode)
 
 setupFor :: Value -> Setup
 setupFor = asyncRom $(TH.lift $ map (fst . microcode . decodeInstr . bitCoerce) $ indicesI @256)
