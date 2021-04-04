@@ -47,12 +47,5 @@ compress = reorder . renumber . links . suffixTree
         flat (Left k) = fromIntegral k
         flat (Right idx) = idx + offset
 
-microcodes :: Vec 256 (NonEmpty (MicroInstr, Wedge OutAddr InAddr))
-microcodes = fmap (NE.fromList . truncate . toList) rawMicrocodes
-  where
-    truncate ((x, True):xs) = x : truncate xs
-    truncate ((x, False):xs) = [x]
-    truncate _ = []
-
-rawMicrocodes :: Vec 256 MicroOps
-rawMicrocodes = map (snd . microcode . decodeInstr . bitCoerce) indicesI
+microcodes :: Vec 256 (NonEmpty MicroOp)
+microcodes = map (NE.fromList . snd . microcode . decodeInstr . bitCoerce) indicesI
