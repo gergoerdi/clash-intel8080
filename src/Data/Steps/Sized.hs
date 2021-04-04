@@ -4,7 +4,7 @@
 -- | A container for sequences where each step can have a pre- and a
 -- postamble. The postamble and the preamble of two neighbouring steps
 -- are collapsed.
-module Hardware.Intel8080.Steps where
+module Data.Steps.Sized where
 
 import Clash.Prelude
 import Data.Wedge

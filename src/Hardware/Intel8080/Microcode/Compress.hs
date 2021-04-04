@@ -4,7 +4,7 @@ module Hardware.Intel8080.Microcode.Compress where
 import Clash.Prelude hiding (fromList)
 import Hardware.Intel8080
 import Hardware.Intel8080.Microcode
-import Hardware.Intel8080.Microcode.Trie
+import Data.Trie
 import Hardware.Intel8080.Decode
 import Data.Wedge
 

@@ -3,7 +3,7 @@ module Hardware.Intel8080.Microcode where
 import Clash.Prelude
 
 import Hardware.Intel8080
-import Hardware.Intel8080.Steps
+import Data.Steps.Sized
 import Data.Wedge
 
 data InAddr
