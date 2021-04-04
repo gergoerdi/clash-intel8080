@@ -11,6 +11,7 @@ import RetroClash.Barbies
 import Hardware.Intel8080
 import Hardware.Intel8080.Decode
 import Hardware.Intel8080.Microcode
+import Hardware.Intel8080.Microcode.Compress
 import Hardware.Intel8080.MicroCPU
 
 import Control.Monad.State
@@ -26,11 +27,14 @@ import Barbies.TH
 import qualified Language.Haskell.TH.Syntax as TH
 import Debug.Trace
 
+type MicroSize = 547
+type MicroPtr = Index MicroSize
+
 data Phase
     = Init
     | Halted
     | Fetching Bool
-    | Executing Bool Value (Index MicroLen)
+    | Executing Bool MicroPtr
     deriving (Show, Generic, NFDataX)
 
 declareBareB [d|
@@ -136,10 +140,10 @@ cpu inp@CPUIn{..} = void . runMaybeT $ do
             unless interrupting $ microState.pc += 1
             let setup = setupFor instr
             load <- addressing (wedgeRight setup)
-            phase .= Executing load instr 0
-        Executing load instr i -> do
+            phase .= Executing load (fromIntegral instr)
+        Executing load ptr -> do
             when load $ microState.valueBuf .= dataRead
-            exec instr i
+            exec ptr
         Halted -> when interrupted $ do
             acceptInterrupt
             phase .= Fetching True
@@ -156,9 +160,9 @@ fetchNext = do
     addrLatch .= Just addr
     phase .= Fetching False
 
-exec :: Value -> Index MicroLen -> CPU ()
-exec instr i = do
-    let ((uop, teardown), cont) = microcodeFor instr !! i
+exec :: MicroPtr -> CPU ()
+exec ptr = do
+    let ((uop, teardown), next) = microcodeAt ptr
     -- traceShow (i, uop, teardown, cont) $ return ()
     runExceptT (zoom microState $ uexec uop) >>= \case
         Left GotoNext -> do
@@ -167,8 +171,7 @@ exec instr i = do
             phase .= Halted
         Right () -> do
             load <- addressing teardown
-            let i' = guard cont *> succIdx i
-            maybe fetchNext (assign phase . Executing load instr) i'
+            maybe fetchNext (assign phase . Executing load) next
 
 addressing :: Wedge OutAddr InAddr -> CPU Bool
 addressing Nowhere = return False
@@ -188,8 +191,10 @@ doWrite target = do
 doRead :: Either Port Addr -> CPU ()
 doRead addr = addrLatch .= Just addr
 
-microcodeFor :: Value -> MicroOps
-microcodeFor = asyncRom $(TH.lift $ map (snd . microcode . decodeInstr . bitCoerce) $ indicesI @256)
+microcodeAt :: MicroPtr -> ((MicroInstr, Wedge OutAddr InAddr), Maybe MicroPtr)
+microcodeAt = asyncRom @547
+    $(listToVecTH @((MicroInstr, Wedge OutAddr InAddr), Maybe (Index 547)) $
+      fmap (\(x, next) -> (x, fromIntegral <$> next)) $ compress microcodes)
 
 setupFor :: Value -> Setup
 setupFor = asyncRom $(TH.lift $ map (fst . microcode . decodeInstr . bitCoerce) $ indicesI @256)
