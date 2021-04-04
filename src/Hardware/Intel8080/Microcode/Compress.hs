@@ -14,6 +14,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import Control.Monad.RWS
 import Data.Ord (comparing)
+import Language.Haskell.TH
 
 links :: Trie k (NonEmpty a) -> [(Either a Int, k, Maybe (Either a Int))]
 links t = snd $ execRWS (go t) Nothing 0
@@ -47,5 +48,11 @@ compress = reorder . renumber . links . suffixTree
         flat (Left k) = fromIntegral k
         flat (Right idx) = idx + offset
 
-microcodes :: Vec 256 (NonEmpty MicroOp)
-microcodes = map (NE.fromList . snd . microcode . decodeInstr . bitCoerce) indicesI
+compressedMicrocode :: [(MicroOp, Maybe Int)]
+compressedMicrocode = compress rawMicrocode
+  where
+    rawMicrocode :: Vec 256 (NonEmpty MicroOp)
+    rawMicrocode = map (NE.fromList . snd . microcode . decodeInstr . bitCoerce) indicesI
+
+microSize :: TypeQ
+microSize = litT $ numTyLit . fromIntegral $ L.length compressedMicrocode
