@@ -1,4 +1,4 @@
-module Hardware.Intel8080.Microcode.Trie where
+module Data.Trie where
 
 import Prelude
 import Data.List.NonEmpty (NonEmpty(..))
