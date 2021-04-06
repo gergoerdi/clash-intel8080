@@ -3,6 +3,7 @@ module Hardware.Intel8080 where
 
 import Prelude ()
 import Clash.Prelude
+import Clash.Annotations.BitRepresentation hiding (Value)
 
 type Reg = Index 8
 
@@ -51,8 +52,19 @@ data RHS
     | LHS LHS
     deriving (Eq, Ord, Show, Generic, NFDataX)
 
-data ALU = Add Bool | Sub Bool | And | Or | XOr | BCD
+data ALU = Add Bool | Sub Bool | And | XOr | Or | BCD
     deriving (Eq, Ord, Show, Generic, NFDataX, Lift)
+
+{-# ANN module (DataReprAnn
+                  $(liftQ [t|ALU|])
+                  3
+                  [ ConstrRepr 'Add 0b110 0b000 [0b001]
+                  , ConstrRepr 'Sub 0b110 0b010 [0b001]
+                  , ConstrRepr 'And 0b111 0b100 []
+                  , ConstrRepr 'XOr 0b111 0b101 []
+                  , ConstrRepr 'Or  0b111 0b110 []
+                  , ConstrRepr 'BCD 0b111 0b111 []
+                  ]) #-}
 
 data ShiftRotate = Shift | Rotate
     deriving (Eq, Ord, Show, Generic, NFDataX, Lift)
