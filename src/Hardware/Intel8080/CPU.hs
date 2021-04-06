@@ -3,6 +3,7 @@
 module Hardware.Intel8080.CPU where
 
 import Clash.Prelude hiding (lift)
+import Clash.Annotations.BitRepresentation hiding (Value)
 
 import RetroClash.Utils
 import RetroClash.CPU
@@ -29,6 +30,13 @@ import Debug.Trace
 
 type MicroSize = $(microSize)
 type MicroPtr = Index MicroSize
+
+{-# ANN module (DataReprAnn
+                  $(liftQ [t|Maybe (Index $(microSize))|])
+                  10
+                  [ ConstrRepr 'Nothing 0b1111111111 0b1111111111 []
+                  , ConstrRepr 'Just    0b0000000000 0b0000000000 [0b1111111111]
+                  ]) #-}
 
 data Phase
     = Init
