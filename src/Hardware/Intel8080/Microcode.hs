@@ -6,6 +6,7 @@ import Hardware.Intel8080
 import Data.Steps
 import Data.Wedge
 import qualified Data.List as L
+import Clash.Annotations.BitRepresentation hiding (Value)
 
 data InAddr
     = FromPtr
@@ -19,6 +20,14 @@ data OutAddr
     | ToPort
     | DecrSP
     deriving (Show, Eq, Ord, Enum, Bounded, Generic, NFDataX, Lift)
+
+{-# ANN module (DataReprAnn
+                  $(liftQ [t|Wedge OutAddr InAddr|])
+                  3
+                  [ ConstrRepr 'Nowhere 0b111 0b011 []
+                  , ConstrRepr 'Here    0b100 0b000 [0b011]
+                  , ConstrRepr 'There   0b100 0b100 [0b011]
+                  ]) #-}
 
 data UpdateZSP
     = SetZSP
