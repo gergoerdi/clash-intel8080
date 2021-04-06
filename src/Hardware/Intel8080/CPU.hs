@@ -23,7 +23,7 @@ import Data.Wedge
 
 import Barbies
 import Barbies.Bare
-import Data.Barbie.TH
+import Barbies.TH
 import qualified Language.Haskell.TH.Syntax as TH
 import Debug.Trace
 

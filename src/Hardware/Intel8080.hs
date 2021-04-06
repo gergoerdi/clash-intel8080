@@ -1,7 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 module Hardware.Intel8080 where
 
-import Prelude ()
 import Clash.Prelude
 import Clash.Annotations.BitRepresentation hiding (Value)
 
