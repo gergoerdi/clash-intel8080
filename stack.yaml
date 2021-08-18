@@ -1,14 +1,10 @@
-resolver: clash-HEAD.yaml
+resolver: clash-1.4.2.yaml
 
 extra-deps:
   - barbies-2.0.1.0
-  - barbies-th-0.1.2
+  - barbies-th-0.1.7
   - monad-supply-0.9
-
-  - github: emilypi/smash
-    commit: bd3ae30bdfef3f92ce5575a1ee10228830afa11b
-    subdirs:
-      - smash-core
+  - smash-0.1.2
 
 packages:
   - retroclash-lib
