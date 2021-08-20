@@ -13,7 +13,7 @@ import Data.Char
 import Data.Word (Word8)
 import qualified Data.List as L
 import qualified Data.ByteString as BS
-import Data.ByteString.Lazy.Builder
+import Data.ByteString.Builder
 import Text.Printf
 
 prelude :: [Value]

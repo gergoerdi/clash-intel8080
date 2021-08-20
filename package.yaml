@@ -1,7 +1,9 @@
 name:                intel8080
 version:             0.0.0.0
-synopsis:            "Intel 8080 CPU core: software emulator and Clash hardware description"
-homepage:            https://github.com/gergoerdi/clash-intel8080
+synopsis: |
+  Intel 8080 CPU core: software emulator and Clash hardware description
+homepage:            https://unsafePerform.IO/retroclash/
+github:              gergoerdi/clash-intel8080
 license:             MIT
 author:              Gergő Érdi
 maintainer:          gergo@erdi.hu
