@@ -12,29 +12,29 @@ import qualified Data.List as L
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
-import Control.Monad.RWS
+import Control.Monad.State
+import Control.Monad.Writer
 import Data.Ord (comparing)
 import Language.Haskell.TH
 
 links :: Trie k (NonEmpty a) -> [(Either a Int, k, Maybe (Either a Int))]
-links t = snd $ execRWS (go t) Nothing 0
+links = execWriter . flip runStateT 0 . go Nothing
   where
-    go = mapM_ node . children
+    go next = mapM_ (node next) . children
 
-    node (k, mx, t') = do
-        next <- ask
+    node next (k, mx, t') = do
         this <- case mx of
             Nothing -> Right <$> alloc
             Just (x:|xs) -> do
                 tell [(Left x', k, next) | x' <- xs]
                 return $ Left x
         tell [(this, k, next)]
-        local (const $ Just this) $ go t'
+        go (Just this) t'
 
     alloc = get <* modify succ
 
 suffixTree :: (KnownNat n, Ord a) => Vec n (NonEmpty a) -> Trie a (NonEmpty (Index n))
-suffixTree xs = fromListMany [ (NE.reverse word, i) | (i, word) <- toList $ zip indicesI xs ]
+suffixTree = fromListMany . toList . imap (\i word -> (NE.reverse word, i))
 
 compress :: forall n a. (KnownNat n, Ord a) => Vec n (NonEmpty a) -> [(a, Maybe Int)]
 compress = reorder . renumber . links . suffixTree
