@@ -68,7 +68,7 @@ unsafePairL :: Lens' s a -> Lens' s b -> Lens' s (a, b)
 unsafePairL l1 l2 = lens (view l1 &&& view l2) (\s (x,y) -> set l1 x . set l2 y $ s)
 
 bitL :: (BitPack a, Enum i) => i -> Lens' a Bit
-bitL i = lens (!i) (flip $ replaceBit i)
+bitL i = lens (! i) (flip $ replaceBit i)
 
 flag :: Flag -> Lens' MicroState Bool
 flag flg = reg RFlags . bitL flg . iso bitToBool boolToBit
